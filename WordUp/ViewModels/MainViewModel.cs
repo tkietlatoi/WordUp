@@ -7,6 +7,7 @@ using Microsoft.Win32;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using WordUp.Models;
 using WordUp.Services;
 
@@ -19,6 +20,7 @@ public sealed class MainViewModel : ViewModelBase
     private readonly SrsService srsService = new();
     private readonly QuizService quizService = new();
     private readonly PronunciationService pronunciationService = new();
+    private readonly DispatcherTimer studyAutoTimer;
     private object? speechVoice;
     private CancellationTokenSource? newLessonIpaLookupCancellation;
     private CancellationTokenSource? editorIpaLookupCancellation;
@@ -28,6 +30,8 @@ public sealed class MainViewModel : ViewModelBase
     private bool isFlashcardBackVisible;
     private bool isStudyFlashcardOpen;
     private bool isAddLessonOpen;
+    private bool isStudyAutoRunning;
+    private bool isLessonCompleteDialogOpen;
     private int currentWordIndex;
     private int currentQuizIndex;
     private string selectedTab = "Dashboard";
@@ -114,7 +118,14 @@ public sealed class MainViewModel : ViewModelBase
         SaveNewLessonCommand = new RelayCommand(_ => SaveNewLesson());
         CancelNewLessonCommand = new RelayCommand(_ => ShowLessonList());
         FlipFlashcardCommand = new RelayCommand(_ => IsFlashcardBackVisible = !IsFlashcardBackVisible);
-        NextWordCommand = new RelayCommand(parameter => ReviewCurrentWord(parameter));
+        PreviousWordCommand = new RelayCommand(_ => PreviousWord());
+        NextWordCommand = new RelayCommand(_ => CompleteCurrentWordAndMoveNext());
+        ToggleStudyAutoCommand = new RelayCommand(_ => ToggleStudyAuto());
+        SpeakCurrentWordCommand = new RelayCommand(_ => SpeakWord(CurrentWord));
+        ToggleCurrentFavoriteCommand = new RelayCommand(_ => ToggleCurrentFavorite());
+        RestartLessonCommand = new RelayCommand(_ => RestartLesson());
+        BackToLessonsFromCompleteCommand = new RelayCommand(_ => BackToLessonsFromComplete());
+        StartQuizFromLessonCommand = new RelayCommand(_ => StartQuizFromLesson());
         SelectQuizAnswerCommand = new RelayCommand(parameter => SelectQuizAnswer(parameter));
         NextQuizCommand = new RelayCommand(_ => NextQuiz());
         NewWordCommand = new RelayCommand(_ => ClearWordEditor());
@@ -132,6 +143,12 @@ public sealed class MainViewModel : ViewModelBase
         SelectTodayWordAnswerCommand = new RelayCommand(parameter => SelectTodayWordAnswer(parameter));
         SpeakTodayWordCommand = new RelayCommand(_ => SpeakTodayWord());
         ToggleTodayFavoriteCommand = new RelayCommand(_ => ToggleTodayFavorite());
+
+        studyAutoTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(3)
+        };
+        studyAutoTimer.Tick += (_, _) => AdvanceStudyAuto();
 
         LoadProfileEditor();
         RefreshTodayWord();
@@ -158,7 +175,14 @@ public sealed class MainViewModel : ViewModelBase
     public ICommand SaveNewLessonCommand { get; }
     public ICommand CancelNewLessonCommand { get; }
     public ICommand FlipFlashcardCommand { get; }
+    public ICommand PreviousWordCommand { get; }
     public ICommand NextWordCommand { get; }
+    public ICommand ToggleStudyAutoCommand { get; }
+    public ICommand SpeakCurrentWordCommand { get; }
+    public ICommand ToggleCurrentFavoriteCommand { get; }
+    public ICommand RestartLessonCommand { get; }
+    public ICommand BackToLessonsFromCompleteCommand { get; }
+    public ICommand StartQuizFromLessonCommand { get; }
     public ICommand SelectQuizAnswerCommand { get; }
     public ICommand NextQuizCommand { get; }
     public ICommand NewWordCommand { get; }
@@ -497,6 +521,24 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
+    public bool IsStudyAutoRunning
+    {
+        get => isStudyAutoRunning;
+        set
+        {
+            if (SetProperty(ref isStudyAutoRunning, value))
+            {
+                OnPropertyChanged(nameof(StudyAutoButtonText));
+            }
+        }
+    }
+
+    public bool IsLessonCompleteDialogOpen
+    {
+        get => isLessonCompleteDialogOpen;
+        set => SetProperty(ref isLessonCompleteDialogOpen, value);
+    }
+
     public bool IsStudyFlashcardOpen
     {
         get => isStudyFlashcardOpen;
@@ -506,6 +548,10 @@ public sealed class MainViewModel : ViewModelBase
             {
                 OnPropertyChanged(nameof(IsStudyLessonListVisible));
                 OnPropertyChanged(nameof(StudyHeaderTitle));
+                if (!value)
+                {
+                    StopStudyAuto();
+                }
             }
         }
     }
@@ -535,6 +581,8 @@ public sealed class MainViewModel : ViewModelBase
                 OnPropertyChanged(nameof(StudyHeaderTitle));
                 OnPropertyChanged(nameof(CurrentStudyWords));
                 OnPropertyChanged(nameof(CurrentWord));
+                OnPropertyChanged(nameof(StudyFavoriteIcon));
+                OnPropertyChanged(nameof(StudyFavoriteForeground));
                 OnPropertyChanged(nameof(StudyProgressText));
                 OnPropertyChanged(nameof(StudyProgressValue));
             }
@@ -628,6 +676,8 @@ public sealed class MainViewModel : ViewModelBase
             if (SetProperty(ref currentWordIndex, value))
             {
                 OnPropertyChanged(nameof(CurrentWord));
+                OnPropertyChanged(nameof(StudyFavoriteIcon));
+                OnPropertyChanged(nameof(StudyFavoriteForeground));
                 OnPropertyChanged(nameof(StudyProgressText));
                 OnPropertyChanged(nameof(StudyProgressValue));
             }
@@ -704,6 +754,11 @@ public sealed class MainViewModel : ViewModelBase
         ? string.IsNullOrWhiteSpace(User.Note) ? "Thêm ghi chú trong hồ sơ cá nhân" : User.Note
         : "Welcome to WordUp";
     public string FlashcardHint => IsFlashcardBackVisible ? "Đánh giá mức độ ghi nhớ" : "Chạm để lật thẻ";
+    public string StudyFavoriteIcon => CurrentWord.IsFavorite ? "★" : "☆";
+    public Brush StudyFavoriteForeground => CurrentWord.IsFavorite
+        ? new SolidColorBrush(Color.FromRgb(234, 179, 8))
+        : new SolidColorBrush(Color.FromRgb(148, 153, 168));
+    public string StudyAutoButtonText => IsStudyAutoRunning ? "⏸" : "▶";
     public string StudyHeaderTitle => IsStudyFlashcardOpen
         ? SelectedStudyDeck?.Name ?? "Học từ"
         : IsAddLessonOpen
@@ -719,8 +774,11 @@ public sealed class MainViewModel : ViewModelBase
     public int TotalLessons => Decks.Count;
     public int TotalVocabularyWords => Words.Count;
     public int LearnedOrRememberedWords => Words.Count(IsLearnedOrRemembered);
-    public IEnumerable<Deck> RecentDecks => Decks.Take(3);
-    public Deck? ContinueLearningDeck => Decks.FirstOrDefault();
+    public IEnumerable<Deck> RecentDecks => Decks.OrderByDescending(deck => deck.UpdatedAt).Take(3);
+    public Deck? ContinueLearningDeck => Decks
+        .OrderByDescending(deck => deck.UpdatedAt)
+        .FirstOrDefault(deck => deck.ProgressPercentage is > 0 and < 100)
+        ?? Decks.OrderByDescending(deck => deck.UpdatedAt).FirstOrDefault();
     public string ContinueLearningProgress => ContinueLearningDeck?.ProgressText ?? "Chưa có bài học nào";
     public string TodayWordText => todayWord?.Word ?? "WordUp";
     public string TodayWordHint => string.IsNullOrWhiteSpace(todayWord?.Ipa) ? "Chưa có phiên âm" : todayWord.Ipa;
@@ -808,19 +866,48 @@ public sealed class MainViewModel : ViewModelBase
 
         SelectedTab = "Study";
         CurrentView = "Study";
-        CurrentWordIndex = 0;
+        CurrentWordIndex = GetLessonStartIndex(SelectedStudyDeck);
         IsFlashcardBackVisible = false;
+        IsLessonCompleteDialogOpen = false;
         IsAddLessonOpen = false;
         IsStudyFlashcardOpen = true;
     }
 
     private void ShowLessonList()
     {
+        StopStudyAuto();
         IsStudyFlashcardOpen = false;
         IsAddLessonOpen = false;
         IsFlashcardBackVisible = false;
+        IsLessonCompleteDialogOpen = false;
         editingLesson = null;
         OnLessonEditorChanged();
+    }
+
+    private int GetLessonStartIndex(Deck deck)
+    {
+        var studyWords = CurrentStudyWords;
+        if (studyWords.Count == 0 || deck.ProgressPercentage >= 100)
+        {
+            return 0;
+        }
+
+        var firstUnlearnedIndex = studyWords
+            .Select((word, index) => new { word, index })
+            .FirstOrDefault(item => !IsLearnedOrRemembered(item.word))
+            ?.index;
+
+        return firstUnlearnedIndex ?? 0;
+    }
+
+    private void TouchSelectedStudyDeck()
+    {
+        if (SelectedStudyDeck is null)
+        {
+            return;
+        }
+
+        SelectedStudyDeck.UpdatedAt = DateTime.Now;
     }
 
     private void OpenAddLesson()
@@ -1418,6 +1505,116 @@ public sealed class MainViewModel : ViewModelBase
         IsFlashcardBackVisible = false;
     }
 
+    private void PreviousWord()
+    {
+        if (CurrentStudyWords.Count == 0)
+        {
+            return;
+        }
+
+        CurrentWordIndex = (CurrentWordIndex - 1 + CurrentStudyWords.Count) % CurrentStudyWords.Count;
+        IsFlashcardBackVisible = false;
+    }
+
+    private void ToggleStudyAuto()
+    {
+        if (IsStudyAutoRunning)
+        {
+            StopStudyAuto();
+            return;
+        }
+
+        if (CurrentStudyWords.Count == 0)
+        {
+            return;
+        }
+
+        IsStudyAutoRunning = true;
+        studyAutoTimer.Start();
+    }
+
+    private void AdvanceStudyAuto()
+    {
+        if (CurrentStudyWords.Count == 0)
+        {
+            StopStudyAuto();
+            return;
+        }
+
+        if (!IsFlashcardBackVisible)
+        {
+            IsFlashcardBackVisible = true;
+            return;
+        }
+
+        CompleteCurrentWordAndMoveNext();
+    }
+
+    private void StopStudyAuto()
+    {
+        studyAutoTimer.Stop();
+        IsStudyAutoRunning = false;
+    }
+
+    private void CompleteCurrentWordAndMoveNext()
+    {
+        if (CurrentStudyWords.Count == 0)
+        {
+            return;
+        }
+
+        var isLastCard = CurrentWordIndex >= CurrentStudyWords.Count - 1;
+
+        if (!IsLearnedOrRemembered(CurrentWord))
+        {
+            srsService.ApplyReview(CurrentWord, 1);
+            TouchSelectedStudyDeck();
+            SyncLessonProgress();
+            OnProgressChanged();
+            SaveAppState();
+        }
+
+        if (isLastCard)
+        {
+            ShowLessonCompleteDialog();
+            return;
+        }
+
+        NextWord();
+    }
+
+    private void ShowLessonCompleteDialog()
+    {
+        StopStudyAuto();
+        IsFlashcardBackVisible = true;
+        IsLessonCompleteDialogOpen = true;
+    }
+
+    private void RestartLesson()
+    {
+        StopStudyAuto();
+        CurrentWordIndex = 0;
+        IsFlashcardBackVisible = false;
+        IsLessonCompleteDialogOpen = false;
+    }
+
+    private void BackToLessonsFromComplete()
+    {
+        IsLessonCompleteDialogOpen = false;
+        ShowLessonList();
+    }
+
+    private void StartQuizFromLesson()
+    {
+        StopStudyAuto();
+        IsLessonCompleteDialogOpen = false;
+        IsStudyFlashcardOpen = false;
+        IsAddLessonOpen = false;
+        IsFlashcardBackVisible = false;
+        SelectedTab = "Quiz";
+        ResetQuiz();
+    }
+
     private void ReviewCurrentWord(object? parameter)
     {
         if (CurrentStudyWords.Count == 0)
@@ -1427,6 +1624,7 @@ public sealed class MainViewModel : ViewModelBase
 
         var rating = int.TryParse(parameter?.ToString(), out var parsedRating) ? parsedRating : 1;
         srsService.ApplyReview(CurrentWord, rating);
+        TouchSelectedStudyDeck();
         SyncLessonProgress();
         OnProgressChanged();
         SaveAppState();
@@ -1958,7 +2156,12 @@ public sealed class MainViewModel : ViewModelBase
 
     private void SpeakTodayWord()
     {
-        if (todayWord is null || string.IsNullOrWhiteSpace(todayWord.Word))
+        SpeakWord(todayWord);
+    }
+
+    private void SpeakWord(VocabularyWord? word)
+    {
+        if (word is null || string.IsNullOrWhiteSpace(word.Word))
         {
             return;
         }
@@ -1971,11 +2174,11 @@ public sealed class MainViewModel : ViewModelBase
                 System.Reflection.BindingFlags.InvokeMethod,
                 binder: null,
                 target: speechVoice,
-                args: [todayWord.Word, 1]);
+                args: [word.Word, 1]);
         }
         catch
         {
-            // Speech is optional; missing Windows voices should not break the dashboard.
+            // Speech is optional; missing Windows voices should not break learning.
         }
     }
 
@@ -1989,6 +2192,25 @@ public sealed class MainViewModel : ViewModelBase
         todayWord.IsFavorite = !todayWord.IsFavorite;
         OnPropertyChanged(nameof(TodayFavoriteIcon));
         OnPropertyChanged(nameof(TodayFavoriteForeground));
+        SaveAppState();
+    }
+
+    private void ToggleCurrentFavorite()
+    {
+        if (CurrentStudyWords.Count == 0)
+        {
+            return;
+        }
+
+        CurrentWord.IsFavorite = !CurrentWord.IsFavorite;
+        OnPropertyChanged(nameof(StudyFavoriteIcon));
+        OnPropertyChanged(nameof(StudyFavoriteForeground));
+        if (ReferenceEquals(CurrentWord, todayWord))
+        {
+            OnPropertyChanged(nameof(TodayFavoriteIcon));
+            OnPropertyChanged(nameof(TodayFavoriteForeground));
+        }
+
         SaveAppState();
     }
 

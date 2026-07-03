@@ -69,7 +69,9 @@
         </Grid.RowDefinitions>
 
         <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Hidden">
-            <Grid MaxWidth="520" HorizontalAlignment="Center">
+            <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=ScrollViewer}}"
+                  MaxWidth="520"
+                  HorizontalAlignment="Center">
                 <views:LoginView Visibility="{Binding IsLoginView, Converter={StaticResource BoolToVisibility}}" />
                 <views:RegisterView Visibility="{Binding IsRegisterView, Converter={StaticResource BoolToVisibility}}" />
                 <views:ForgotPasswordView Visibility="{Binding IsForgotPasswordView, Converter={StaticResource BoolToVisibility}}" />
