@@ -1,0 +1,50 @@
+<UserControl x:Class="WordUp.Views.WordManagerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Margin="22,18,22,22">
+        <Grid>
+            <Button Content="Menu" Style="{StaticResource IconButton}" Width="54" FontSize="12" HorizontalAlignment="Left" />
+            <TextBlock Text="Từ vựng" Style="{StaticResource PageTitleText}" FontSize="21" HorizontalAlignment="Center" />
+            <Button Content="{Binding User.Initials}" Style="{StaticResource PrimaryButton}" Width="42" Height="38" HorizontalAlignment="Right" Command="{Binding NavigateCommand}" CommandParameter="Account" />
+        </Grid>
+
+        <TextBlock Text="Danh sách từ vựng" Style="{StaticResource SectionTitleText}" />
+        <TextBox Style="{StaticResource TextInput}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
+        <DataGrid ItemsSource="{Binding FilteredWords}"
+                  SelectedItem="{Binding SelectedWord, Mode=TwoWay}"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  HeadersVisibility="Column"
+                  Height="250"
+                  BorderBrush="{StaticResource BorderBrush}"
+                  BorderThickness="1">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Word" Binding="{Binding Word}" Width="*" />
+                <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="70" />
+                <DataGridTextColumn Header="Meaning" Binding="{Binding Meaning}" Width="2*" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <Border Style="{StaticResource Card}" Margin="0,16,0,14">
+            <StackPanel>
+                <TextBlock Text="Thêm/Sửa từ" FontWeight="SemiBold" Margin="0,0,0,12" />
+                <TextBlock Text="Từ" Style="{StaticResource MutedText}" />
+                <TextBox Style="{StaticResource TextInput}" Text="{Binding EditorWord, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,10" />
+                <TextBlock Text="Loại từ" Style="{StaticResource MutedText}" />
+                <TextBox Style="{StaticResource TextInput}" Text="{Binding EditorType, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,10" />
+                <TextBlock Text="Nghĩa tiếng Anh" Style="{StaticResource MutedText}" />
+                <TextBox Style="{StaticResource TextInput}" Text="{Binding EditorMeaning, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,10" />
+                <TextBlock Text="Nghĩa tiếng Việt" Style="{StaticResource MutedText}" />
+                <TextBox Style="{StaticResource TextInput}" Text="{Binding EditorVietnameseMeaning, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,10" />
+                <TextBlock Text="Ví dụ" Style="{StaticResource MutedText}" />
+                <TextBox Style="{StaticResource TextInput}" Text="{Binding EditorExample, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,12" />
+                <TextBlock Text="{Binding WordManagerMessage}" Style="{StaticResource MutedText}" Margin="0,0,0,12" />
+                <UniformGrid Columns="3">
+                    <Button Content="Xóa" Style="{StaticResource DangerButton}" Margin="0,0,8,0" Command="{Binding DeleteWordCommand}" />
+                    <Button Content="Mới" Style="{StaticResource OutlineButton}" Margin="8,0" Command="{Binding NewWordCommand}" />
+                    <Button Content="Lưu" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Command="{Binding SaveWordCommand}" />
+                </UniformGrid>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

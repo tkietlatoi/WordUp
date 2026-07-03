@@ -1,0 +1,29 @@
+<UserControl x:Class="WordUp.Views.AboutView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Margin="22,18,22,22">
+        <Grid>
+            <Button Content="Quay lại" Style="{StaticResource IconButton}" Width="70" FontSize="12" HorizontalAlignment="Left" Command="{Binding NavigateCommand}" CommandParameter="Account" />
+            <TextBlock Text="Về chúng tôi" Style="{StaticResource PageTitleText}" FontSize="21" HorizontalAlignment="Center" />
+        </Grid>
+        <Border Style="{StaticResource Card}" Margin="0,22,0,14">
+            <StackPanel>
+                <TextBlock Text="WordUp" FontSize="24" FontWeight="Bold" TextAlignment="Center" />
+                <TextBlock Text="Nền tảng học từ vựng tiếng Anh được thiết kế cho việc học tập trung, hiệu quả và cá nhân hóa." TextAlignment="Center" Margin="0,12,0,0" />
+            </StackPanel>
+        </Border>
+        <TextBlock Text="ĐỘI NGŨ PHÁT TRIỂN" Style="{StaticResource MutedText}" TextAlignment="Center" Margin="0,4,0,16" />
+        <Border Style="{StaticResource Card}">
+            <StackPanel HorizontalAlignment="Center">
+                <TextBlock Text="Nguyễn Văn A" FontWeight="Bold" TextAlignment="Center" />
+                <TextBlock Text="Trưởng nhóm / Backend" Style="{StaticResource MutedText}" TextAlignment="Center" />
+            </StackPanel>
+        </Border>
+        <Border Style="{StaticResource Card}">
+            <StackPanel HorizontalAlignment="Center">
+                <TextBlock Text="Trần Thị B" FontWeight="Bold" TextAlignment="Center" />
+                <TextBlock Text="UI/UX Designer" Style="{StaticResource MutedText}" TextAlignment="Center" />
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

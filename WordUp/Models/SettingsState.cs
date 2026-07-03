@@ -1,0 +1,9 @@
+namespace WordUp.Models;
+
+public sealed class SettingsState
+{
+    public double AudioVolume { get; set; } = 75;
+    public bool DailyReminders { get; set; } = true;
+    public bool AutoPlayAudio { get; set; }
+    public bool OfflineMode { get; set; }
+}

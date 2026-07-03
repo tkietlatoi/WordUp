@@ -1,0 +1,75 @@
+BẢN MÔ TẢ CHI TIẾT HỆ THỐNG (SYSTEM SPECIFICATION)
+
+1. Giới thiệu tổng quan (Overview)
+
+WordUp là một hệ thống quản lý và học từ vựng tiếng Anh thông minh cao cấp được phát triển trên nền tảng C# .NET (WPF - Windows Presentation Foundation). Ứng dụng áp dụng phương pháp học khoa học qua thẻ ghi nhớ (Flashcard) kết hợp với thuật toán lặp lại ngắt quãng (Spaced Repetition System - SRS) và hệ thống kiểm tra đánh giá (Quiz Mode) giúp người học tối ưu hóa thời gian và ghi nhớ từ vựng vào vùng trí nhớ dài hạn một cách tự nhiên, hiệu quả.
+
+
+
+2. Giao diện & Trải nghiệm người dùng (UI/UX)
+
+Giao diện ứng dụng được thiết kế theo phong cách Indigo Academic tối giản, hiện đại và tập trung vào trải nghiệm. Sử dụng các thẻ bo góc (Card-based Layout), hiệu ứng chuyển động mượt mà và hệ thống màu sắc trực quan (Xanh Indigo chủ đạo kết hợp Trắng/Neutral cao cấp) giúp giảm bớt sự khô khan của các phần mềm học thuật truyền thống. Giao diện được thiết kế tối ưu hóa độ co giãn (Responsive) giúp hiển thị hoàn hảo trên các độ phân giải màn hình khác nhau.
+
+
+
+3. Các Phân hệ chức năng chính (Core Modules)
+
+Hệ thống bao gồm 6 màn hình tương ứng với các phân hệ chức năng cốt lõi theo luồng trải nghiệm của người dùng:
+
+
+
+Xác thực người dùng (Authentication - FormLogin / FormRegister):
+
+
+
+Cửa sổ khởi tạo của ứng dụng, cho phép người dùng đăng nhập hoặc đăng ký tài khoản mới.
+
+
+
+Hệ thống kiểm tra tính hợp lệ dữ liệu đầu vào (Validation) trực quan (báo đỏ nếu để trống hoặc nhập sai định dạng). Việc xác thực giúp hệ thống cá nhân hóa hoàn toàn lộ trình học, kho từ vựng và lưu trữ tiến trình riêng biệt cho từng cá nhân.
+
+
+
+Bảng điều khiển trung tâm (Dashboard - FormMain): Nơi cá nhân hóa trải nghiệm sau khi đăng nhập thành công (hiển thị lời chào theo tên người dùng). Cung cấp cái nhìn toàn cảnh về tiến độ học tập trong ngày (Số từ cần ôn, số từ đã thuộc) và quản lý danh sách các bộ từ vựng (Decks) theo từng chủ đề riêng biệt (IELTS, Daily English, TOEIC...).
+
+
+
+Không gian học Flashcard (Study Mode - FormFlashcard): Tính năng cốt lõi mô phỏng thẻ ghi nhớ hai mặt vật lý.
+
+
+
+Mặt trước: Hiển thị từ vựng, phiên âm chuẩn IPA và tích hợp nút phát âm âm thanh (Audio).
+
+
+
+Mặt sau: Lật thẻ để xem nghĩa tiếng Việt, loại từ, ví dụ thực tế và hình ảnh minh họa. Sau khi lật, người dùng đánh giá mức độ thuộc từ (Chưa thuộc, Bình thường, Đã thuộc) để hệ thống tự động tính toán thời gian ôn tập tiếp theo.
+
+
+
+Trình kiểm tra & Đánh giá (Quiz Mode - FormQuiz): Trình tạo bài test trắc nghiệm 4 đáp án (A, B, C, D) ngẫu nhiên dựa trên các từ vựng vừa học. Sau khi nộp bài, hệ thống sẽ trả về bảng điểm phần trăm và một danh sách xem lại chi tiết (Review List) – hiển thị màu xanh kèm tích (✓) cho câu đúng, và chữ màu đỏ kèm dấu (✗) cho câu sai (hiển thị rõ đáp án đúng bên cạnh) để người học kịp thời rút kinh nghiệm.
+
+
+
+Quản lý kho dữ liệu từ vựng (Vocabulary Management - FormWordManagement): Bộ công cụ dành cho người dùng quản lý thư viện từ vựng cá nhân. Hỗ trợ tìm kiếm thông minh (Search) theo từ hoặc theo bộ thẻ, cùng các chức năng xử lý dữ liệu chuẩn C.R.U.D (Thêm từ mới, Sửa thông tin từ, Xóa từ khỏi hệ thống).
+
+
+
+Thống kê & Thúc đẩy học tập (Analytics & Gamification - FormAnalytics): Hệ thống phân tích số liệu trực quan qua biểu đồ mục tiêu ngày (Today's Goal Percentage) và biểu đồ cột tiến độ tuần (Weekly Progress Chart). Tích hợp cơ chế tặng thưởng Huy hiệu danh hiệu (Achievements Badge) dựa trên chuỗi ngày học liên tục (Streak) để kích thích và tạo động lực duy trì thói quen học tập hàng ngày.
+
+
+
+4. Kiến trúc & Công nghệ sử dụng (Technical Stack)
+
+Ngôn ngữ lập trình: C# (.NET Core / .NET Framework mới nhất).
+
+
+
+Công nghệ UI: WPF (Windows Presentation Foundation) với ngôn ngữ định dạng XAML, giúp tùy biến giao diện bo góc, đổ bóng và xử lý hiệu ứng mượt mà.
+
+
+
+Kiến trúc phần mềm: 3-Lớp (3-Tier Architecture) / MVC giúp tách biệt hoàn toàn giữa giao diện hiển thị (View), logic xử lý (Controller/Service) và tầng dữ liệu (Model/Database).
+
+
+
+Quản lý mã nguồn: Git & GitHub (Hỗ trợ làm việc nhóm, phân nhánh và kiểm soát các phiên bản code).

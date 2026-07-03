@@ -1,0 +1,28 @@
+<UserControl x:Class="WordUp.Views.ProfileView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <StackPanel Margin="22,18,22,22">
+        <Grid>
+            <Button Content="Quay lại" Style="{StaticResource IconButton}" Width="70" FontSize="12" HorizontalAlignment="Left" Command="{Binding NavigateCommand}" CommandParameter="Account" />
+            <TextBlock Text="Sửa hồ sơ" Style="{StaticResource PageTitleText}" FontSize="21" HorizontalAlignment="Center" />
+        </Grid>
+        <Border Style="{StaticResource Card}" Margin="0,22,0,0">
+            <StackPanel>
+                <TextBlock Text="Thông tin cá nhân" FontWeight="Bold" Margin="0,0,0,14" />
+                <TextBlock Text="Họ và tên" Style="{StaticResource MutedText}" />
+                <TextBox Style="{StaticResource TextInput}" Text="{Binding ProfileFullName, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,12" />
+                <TextBlock Text="Địa chỉ email" Style="{StaticResource MutedText}" />
+                <TextBox Style="{StaticResource TextInput}" Text="{Binding ProfileEmail, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,12" />
+                <TextBlock Text="Số điện thoại" Style="{StaticResource MutedText}" />
+                <TextBox Style="{StaticResource TextInput}" Text="{Binding ProfilePhone, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,22" />
+                <TextBlock Text="Bảo mật" FontWeight="Bold" Margin="0,0,0,14" />
+                <PasswordBox Style="{StaticResource PasswordInput}" Margin="0,0,0,12" />
+                <PasswordBox Style="{StaticResource PasswordInput}" Margin="0,0,0,12" />
+                <PasswordBox Style="{StaticResource PasswordInput}" Margin="0,0,0,20" />
+                <TextBlock Text="{Binding ProfileMessage}" Style="{StaticResource MutedText}" Margin="0,0,0,12" />
+                <Button Content="Lưu thay đổi" Style="{StaticResource PrimaryButton}" Margin="0,0,0,10" Command="{Binding SaveProfileCommand}" />
+                <Button Content="Hủy" Style="{StaticResource OutlineButton}" Command="{Binding CancelProfileCommand}" />
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>
