@@ -24,7 +24,7 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Hidden">
             <Grid MaxWidth="520" HorizontalAlignment="Center">
                 <views:LoginView Visibility="{Binding IsLoginView, Converter={StaticResource BoolToVisibility}}" />
                 <views:RegisterView Visibility="{Binding IsRegisterView, Converter={StaticResource BoolToVisibility}}" />

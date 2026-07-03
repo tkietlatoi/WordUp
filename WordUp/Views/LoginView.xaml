@@ -2,12 +2,12 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:WordUp">
-    <Grid Margin="22,18,22,22">
+    <Grid Margin="18,16,18,20">
         <Border Style="{StaticResource Card}"
-                Width="386"
-                Height="700"
+                Width="360"
+                MaxWidth="360"
                 VerticalAlignment="Center"
-                Padding="28">
+                Padding="24">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
@@ -52,8 +52,17 @@
                     <TextBlock Text="Email ho&#7863;c s&#7889; &#273;i&#7879;n tho&#7841;i" Margin="0,0,0,6" />
                     <TextBox Style="{StaticResource TextInput}" Text="{Binding LoginEmail, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,12" />
                     <Grid Margin="0,0,0,6">
-                        <TextBlock Text="M&#7853;t kh&#7849;u" />
-                        <Button Content="Qu&#234;n m&#7853;t kh&#7849;u?" Style="{StaticResource TextLinkButton}" HorizontalAlignment="Right" Command="{Binding NavigateCommand}" CommandParameter="ForgotPassword" />
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="M&#7853;t kh&#7849;u" VerticalAlignment="Center" />
+                        <Button Grid.Column="1"
+                                Content="Qu&#234;n m&#7853;t kh&#7849;u?"
+                                Style="{StaticResource TextLinkButton}"
+                                HorizontalAlignment="Right"
+                                Command="{Binding NavigateCommand}"
+                                CommandParameter="ForgotPassword" />
                     </Grid>
                     <PasswordBox Style="{StaticResource PasswordInput}" local:PasswordBoxHelper.BoundPassword="{Binding LoginPassword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" />
                     <TextBlock Text="{Binding AuthMessage}" FontSize="12" Margin="0,0,0,12">
