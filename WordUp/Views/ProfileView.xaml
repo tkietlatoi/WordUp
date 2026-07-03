@@ -14,11 +14,16 @@
                 <TextBlock Text="Địa chỉ email" Style="{StaticResource MutedText}" />
                 <TextBox Style="{StaticResource TextInput}" Text="{Binding ProfileEmail, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,12" />
                 <TextBlock Text="Số điện thoại" Style="{StaticResource MutedText}" />
-                <TextBox Style="{StaticResource TextInput}" Text="{Binding ProfilePhone, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,22" />
-                <TextBlock Text="Bảo mật" FontWeight="Bold" Margin="0,0,0,14" />
-                <PasswordBox Style="{StaticResource PasswordInput}" Margin="0,0,0,12" />
-                <PasswordBox Style="{StaticResource PasswordInput}" Margin="0,0,0,12" />
-                <PasswordBox Style="{StaticResource PasswordInput}" Margin="0,0,0,20" />
+                <TextBox Style="{StaticResource TextInput}" Text="{Binding ProfilePhone, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,16" />
+                <TextBlock Text="Ghi chú trang chủ" FontWeight="Bold" Margin="0,0,0,8" />
+                <RichTextBox x:Name="NoteEditor"
+                             MinHeight="116"
+                             Padding="10,8"
+                             FontFamily="Segoe UI"
+                             BorderBrush="{StaticResource BorderBrush}"
+                             BorderThickness="1"
+                             TextChanged="NoteEditor_TextChanged"
+                             Margin="0,0,0,18" />
                 <TextBlock Text="{Binding ProfileMessage}" Style="{StaticResource MutedText}" Margin="0,0,0,12" />
                 <Button Content="Lưu thay đổi" Style="{StaticResource PrimaryButton}" Margin="0,0,0,10" Command="{Binding SaveProfileCommand}" />
                 <Button Content="Hủy" Style="{StaticResource OutlineButton}" Command="{Binding CancelProfileCommand}" />

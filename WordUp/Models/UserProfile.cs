@@ -9,6 +9,7 @@ public sealed class UserProfile : INotifyPropertyChanged
     private string email = "";
     private string phone = "";
     private string level = "";
+    private string note = "";
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -40,6 +41,12 @@ public sealed class UserProfile : INotifyPropertyChanged
     {
         get => level;
         set => SetProperty(ref level, value);
+    }
+
+    public string Note
+    {
+        get => note;
+        set => SetProperty(ref note, value);
     }
 
     public string Initials

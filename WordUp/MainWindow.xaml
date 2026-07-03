@@ -11,10 +11,54 @@
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <Style x:Key="NavButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
-            <Setter Property="Width" Value="92" />
-            <Setter Property="Height" Value="56" />
-            <Setter Property="FontSize" Value="11" />
-            <Setter Property="Foreground" Value="#3C415A" />
+            <Setter Property="Width" Value="104" />
+            <Setter Property="Height" Value="66" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#111322" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                SnapsToDevicePixels="True">
+                            <StackPanel HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                        VerticalAlignment="{TemplateBinding VerticalContentAlignment}">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  Margin="{TemplateBinding Padding}" />
+                                <Border x:Name="Indicator"
+                                        Width="46"
+                                        Height="3"
+                                        Margin="0,5,0,0"
+                                        Background="{StaticResource IndigoBrush}"
+                                        CornerRadius="2"
+                                        Visibility="Collapsed" />
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource IndigoBrush}" />
+                                <Setter TargetName="Indicator" Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource IndigoBrush}" />
+                                <Setter TargetName="Indicator" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.78" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Window.Resources>
 
@@ -44,10 +88,10 @@
 
         <Border Grid.Row="1" Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="0,1,0,0" Visibility="{Binding ShowBottomNavigation, Converter={StaticResource BoolToVisibility}}">
             <UniformGrid Columns="4" MaxWidth="520" HorizontalAlignment="Center">
-                <Button Content="Trang chủ" Style="{StaticResource NavButton}" Command="{Binding SelectTabCommand}" CommandParameter="Dashboard" />
-                <Button Content="Bài học" Style="{StaticResource NavButton}" Command="{Binding SelectTabCommand}" CommandParameter="Study" />
-                <Button Content="Luyện tập" Style="{StaticResource NavButton}" Command="{Binding SelectTabCommand}" CommandParameter="Quiz" />
-                <Button Content="Cá nhân" Style="{StaticResource NavButton}" Command="{Binding SelectTabCommand}" CommandParameter="Account" />
+                <Button Content="Trang chủ" Style="{StaticResource NavButton}" Tag="{Binding IsDashboardView}" Command="{Binding SelectTabCommand}" CommandParameter="Dashboard" />
+                <Button Content="Bài học" Style="{StaticResource NavButton}" Tag="{Binding IsStudyView}" Command="{Binding SelectTabCommand}" CommandParameter="Study" />
+                <Button Content="Luyện tập" Style="{StaticResource NavButton}" Tag="{Binding IsQuizView}" Command="{Binding SelectTabCommand}" CommandParameter="Quiz" />
+                <Button Content="Cá nhân" Style="{StaticResource NavButton}" Tag="{Binding IsAccountView}" Command="{Binding SelectTabCommand}" CommandParameter="Account" />
             </UniformGrid>
         </Border>
     </Grid>

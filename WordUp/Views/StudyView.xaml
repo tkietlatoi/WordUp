@@ -61,6 +61,8 @@
                     <TextBlock Text="Thêm từ thủ công" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,12" />
                     <TextBlock Text="Từ" Style="{StaticResource MutedText}" />
                     <TextBox Style="{StaticResource TextInput}" Text="{Binding NewLessonWord, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,10" />
+                    <TextBlock Text="IPA" Style="{StaticResource MutedText}" />
+                    <TextBox Style="{StaticResource TextInput}" Text="{Binding NewLessonIpa, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,10" />
                     <TextBlock Text="Nghĩa của từ" Style="{StaticResource MutedText}" />
                     <TextBox Style="{StaticResource TextInput}" Text="{Binding NewLessonMeaning, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,10" />
                     <TextBlock Text="Loại từ" Style="{StaticResource MutedText}" />
@@ -74,7 +76,7 @@
             <Border Style="{StaticResource Card}" Padding="16">
                 <StackPanel>
                     <TextBlock Text="Nhập từ tệp" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8" />
-                    <TextBlock Text="Hỗ trợ .txt, .csv, .docx, .xlsx. Mỗi dòng hoặc hàng: từ, nghĩa, loại từ, ví dụ." Style="{StaticResource MutedText}" Margin="0,0,0,12" />
+                    <TextBlock Text="Hỗ trợ .txt, .csv, .docx, .xlsx. Mỗi dòng hoặc hàng: từ, nghĩa, loại từ, ví dụ hoặc từ, IPA, nghĩa, loại từ, ví dụ." Style="{StaticResource MutedText}" Margin="0,0,0,12" TextWrapping="Wrap" />
                     <Grid>
                         <TextBox Style="{StaticResource TextInput}" Text="{Binding NewLessonFilePath}" IsReadOnly="True" Margin="0,0,104,0" />
                         <Button Content="Chọn tệp" Style="{StaticResource PrimaryButton}" Width="96" Height="36" HorizontalAlignment="Right" Command="{Binding ImportLessonFileCommand}" />
@@ -100,6 +102,7 @@
                             <Grid>
                                 <StackPanel Margin="0,0,132,0">
                                     <TextBlock Text="{Binding Word}" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding Ipa}" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
                                     <TextBlock Text="{Binding VietnameseMeaning}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
                                     <TextBlock Text="{Binding Type}" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
                                 </StackPanel>

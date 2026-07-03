@@ -85,7 +85,7 @@ public sealed class LocalStorageService
         using var connection = OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT full_name, email, phone, level, password_hash
+            SELECT full_name, email, phone, level, note, password_hash
             FROM accounts
             WHERE lower(email) = lower($contact)
                OR phone = $contact
@@ -94,7 +94,7 @@ public sealed class LocalStorageService
         command.Parameters.AddWithValue("$contact", trimmedContact);
 
         using var reader = command.ExecuteReader();
-        if (!reader.Read() || !VerifyPassword(password, reader.GetString(4)))
+        if (!reader.Read() || !VerifyPassword(password, reader.GetString(5)))
         {
             return false;
         }
@@ -103,6 +103,7 @@ public sealed class LocalStorageService
         targetUser.Email = reader.GetString(1);
         targetUser.Phone = reader.GetString(2);
         targetUser.Level = reader.GetString(3);
+        targetUser.Note = reader.GetString(4);
         return true;
     }
 
@@ -207,6 +208,7 @@ public sealed class LocalStorageService
                 full_name TEXT NOT NULL,
                 phone TEXT NOT NULL DEFAULT '',
                 level TEXT NOT NULL DEFAULT '',
+                note TEXT NOT NULL DEFAULT '',
                 password_hash TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -236,6 +238,7 @@ public sealed class LocalStorageService
                 review_count INTEGER NOT NULL DEFAULT 0,
                 correct_quiz_count INTEGER NOT NULL DEFAULT 0,
                 incorrect_quiz_count INTEGER NOT NULL DEFAULT 0,
+                is_favorite INTEGER NOT NULL DEFAULT 0,
                 last_reviewed_at TEXT NULL,
                 next_review_date TEXT NOT NULL,
                 FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
@@ -254,6 +257,8 @@ public sealed class LocalStorageService
             CREATE INDEX IF NOT EXISTS ix_lesson_words_lesson_id ON lesson_words(lesson_id);
             """;
         command.ExecuteNonQuery();
+        EnsureAccountNoteColumn(connection);
+        EnsureLessonWordFavoriteColumn(connection);
     }
 
     private static void ResetLegacySchemaIfNeeded(SqliteConnection connection)
@@ -276,6 +281,30 @@ public sealed class LocalStorageService
         using var foreignKeysOn = connection.CreateCommand();
         foreignKeysOn.CommandText = "PRAGMA foreign_keys = ON;";
         foreignKeysOn.ExecuteNonQuery();
+    }
+
+    private static void EnsureAccountNoteColumn(SqliteConnection connection)
+    {
+        if (!TableExists(connection, "accounts") || ColumnExists(connection, "accounts", "note"))
+        {
+            return;
+        }
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "ALTER TABLE accounts ADD COLUMN note TEXT NOT NULL DEFAULT '';";
+        command.ExecuteNonQuery();
+    }
+
+    private static void EnsureLessonWordFavoriteColumn(SqliteConnection connection)
+    {
+        if (!TableExists(connection, "lesson_words") || ColumnExists(connection, "lesson_words", "is_favorite"))
+        {
+            return;
+        }
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "ALTER TABLE lesson_words ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0;";
+        command.ExecuteNonQuery();
     }
 
     private static bool TableExists(SqliteConnection connection, string tableName)
@@ -321,7 +350,7 @@ public sealed class LocalStorageService
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT full_name, email, phone, level
+            SELECT full_name, email, phone, level, note
             FROM accounts
             WHERE lower(email) = lower($email)
             LIMIT 1;
@@ -339,7 +368,8 @@ public sealed class LocalStorageService
             FullName = reader.GetString(0),
             Email = reader.GetString(1),
             Phone = reader.GetString(2),
-            Level = reader.GetString(3)
+            Level = reader.GetString(3),
+            Note = reader.GetString(4)
         };
     }
 
@@ -378,7 +408,7 @@ public sealed class LocalStorageService
         command.CommandText = """
             SELECT lw.lesson_id, lw.word, lw.ipa, lw.type, lw.meaning, lw.vietnamese_meaning, lw.example,
                    lw.mastery_level, lw.review_count, lw.correct_quiz_count, lw.incorrect_quiz_count,
-                   lw.last_reviewed_at, lw.next_review_date
+                   lw.is_favorite, lw.last_reviewed_at, lw.next_review_date
             FROM lesson_words lw
             INNER JOIN lessons l ON l.id = lw.lesson_id
             WHERE lower(l.account_email) = lower($accountEmail)
@@ -403,8 +433,9 @@ public sealed class LocalStorageService
                 ReviewCount = reader.GetInt32(8),
                 CorrectQuizCount = reader.GetInt32(9),
                 IncorrectQuizCount = reader.GetInt32(10),
-                LastReviewedAt = reader.IsDBNull(11) ? null : ParseDateTime(reader.GetString(11)),
-                NextReviewDate = ParseDateTime(reader.GetString(12))
+                IsFavorite = reader.GetInt32(11) == 1,
+                LastReviewedAt = reader.IsDBNull(12) ? null : ParseDateTime(reader.GetString(12)),
+                NextReviewDate = ParseDateTime(reader.GetString(13))
             });
         }
 
@@ -468,18 +499,20 @@ public sealed class LocalStorageService
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
-            INSERT INTO accounts (email, full_name, phone, level, password_hash, updated_at)
-            VALUES ($email, $fullName, $phone, $level, $passwordHash, CURRENT_TIMESTAMP)
+            INSERT INTO accounts (email, full_name, phone, level, note, password_hash, updated_at)
+            VALUES ($email, $fullName, $phone, $level, $note, $passwordHash, CURRENT_TIMESTAMP)
             ON CONFLICT(email) DO UPDATE SET
                 full_name = excluded.full_name,
                 phone = excluded.phone,
                 level = excluded.level,
+                note = excluded.note,
                 updated_at = CURRENT_TIMESTAMP;
             """;
         command.Parameters.AddWithValue("$email", user.Email.Trim());
         command.Parameters.AddWithValue("$fullName", user.FullName.Trim());
         command.Parameters.AddWithValue("$phone", user.Phone.Trim());
         command.Parameters.AddWithValue("$level", user.Level.Trim());
+        command.Parameters.AddWithValue("$note", user.Note.Trim());
         command.Parameters.AddWithValue("$passwordHash", passwordHash);
         command.ExecuteNonQuery();
     }
@@ -542,11 +575,11 @@ public sealed class LocalStorageService
                 INSERT INTO lesson_words (
                     lesson_id, word, ipa, type, meaning, vietnamese_meaning, example,
                     mastery_level, review_count, correct_quiz_count, incorrect_quiz_count,
-                    last_reviewed_at, next_review_date)
+                    is_favorite, last_reviewed_at, next_review_date)
                 VALUES (
                     $lessonId, $word, $ipa, $type, $meaning, $vietnameseMeaning, $example,
                     $masteryLevel, $reviewCount, $correctQuizCount, $incorrectQuizCount,
-                    $lastReviewedAt, $nextReviewDate);
+                    $isFavorite, $lastReviewedAt, $nextReviewDate);
                 """;
             command.Parameters.AddWithValue("$lessonId", word.LessonId);
             command.Parameters.AddWithValue("$word", word.Word);
@@ -559,6 +592,7 @@ public sealed class LocalStorageService
             command.Parameters.AddWithValue("$reviewCount", word.ReviewCount);
             command.Parameters.AddWithValue("$correctQuizCount", word.CorrectQuizCount);
             command.Parameters.AddWithValue("$incorrectQuizCount", word.IncorrectQuizCount);
+            command.Parameters.AddWithValue("$isFavorite", word.IsFavorite ? 1 : 0);
             command.Parameters.AddWithValue("$lastReviewedAt", word.LastReviewedAt is null ? DBNull.Value : FormatDateTime(word.LastReviewedAt.Value));
             command.Parameters.AddWithValue("$nextReviewDate", FormatDateTime(word.NextReviewDate));
             command.ExecuteNonQuery();

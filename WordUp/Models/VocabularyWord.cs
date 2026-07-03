@@ -16,6 +16,7 @@ public sealed class VocabularyWord : INotifyPropertyChanged
     private int reviewCount;
     private int correctQuizCount;
     private int incorrectQuizCount;
+    private bool isFavorite;
     private DateTime? lastReviewedAt;
     private DateTime nextReviewDate = DateTime.Today;
 
@@ -85,6 +86,12 @@ public sealed class VocabularyWord : INotifyPropertyChanged
     {
         get => incorrectQuizCount;
         set => SetProperty(ref incorrectQuizCount, Math.Max(0, value));
+    }
+
+    public bool IsFavorite
+    {
+        get => isFavorite;
+        set => SetProperty(ref isFavorite, value);
     }
 
     public DateTime? LastReviewedAt

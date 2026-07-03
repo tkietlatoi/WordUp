@@ -20,6 +20,7 @@
                   BorderThickness="1">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Word" Binding="{Binding Word}" Width="*" />
+                <DataGridTextColumn Header="IPA" Binding="{Binding Ipa}" Width="90" />
                 <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="70" />
                 <DataGridTextColumn Header="Meaning" Binding="{Binding Meaning}" Width="2*" />
             </DataGrid.Columns>
@@ -30,6 +31,8 @@
                 <TextBlock Text="Thêm/Sửa từ" FontWeight="SemiBold" Margin="0,0,0,12" />
                 <TextBlock Text="Từ" Style="{StaticResource MutedText}" />
                 <TextBox Style="{StaticResource TextInput}" Text="{Binding EditorWord, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,10" />
+                <TextBlock Text="IPA" Style="{StaticResource MutedText}" />
+                <TextBox Style="{StaticResource TextInput}" Text="{Binding EditorIpa, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,10" />
                 <TextBlock Text="Loại từ" Style="{StaticResource MutedText}" />
                 <TextBox Style="{StaticResource TextInput}" Text="{Binding EditorType, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,10" />
                 <TextBlock Text="Nghĩa tiếng Anh" Style="{StaticResource MutedText}" />

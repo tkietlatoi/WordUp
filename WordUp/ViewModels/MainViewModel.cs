@@ -18,6 +18,10 @@ public sealed class MainViewModel : ViewModelBase
     private readonly LocalStorageService storageService = new();
     private readonly SrsService srsService = new();
     private readonly QuizService quizService = new();
+    private readonly PronunciationService pronunciationService = new();
+    private object? speechVoice;
+    private CancellationTokenSource? newLessonIpaLookupCancellation;
+    private CancellationTokenSource? editorIpaLookupCancellation;
     private string currentView = "Dashboard";
     private string pendingAuthenticatedView = "Dashboard";
     private string searchText = "";
@@ -32,6 +36,8 @@ public sealed class MainViewModel : ViewModelBase
     private Deck? editingLesson;
     private string newLessonName = "";
     private string newLessonWord = "";
+    private string newLessonIpa = "";
+    private bool newLessonIpaWasAutoFilled;
     private string newLessonMeaning = "";
     private string newLessonType = "";
     private string newLessonFilePath = "";
@@ -40,6 +46,8 @@ public sealed class MainViewModel : ViewModelBase
     private VocabularyWord? editingLessonWord;
     private VocabularyWord? selectedWord;
     private string editorWord = "";
+    private string editorIpa = "";
+    private bool editorIpaWasAutoFilled;
     private string editorType = "";
     private string editorMeaning = "";
     private string editorVietnameseMeaning = "";
@@ -63,6 +71,7 @@ public sealed class MainViewModel : ViewModelBase
     private string profileFullName = "";
     private string profileEmail = "";
     private string profilePhone = "";
+    private string profileNote = "";
     private string profileMessage = "";
     private double audioVolume = 75;
     private bool dailyReminders = true;
@@ -121,6 +130,8 @@ public sealed class MainViewModel : ViewModelBase
         LogoutCommand = new RelayCommand(_ => Logout());
         DeleteAccountCommand = new RelayCommand(_ => DeleteAccount());
         SelectTodayWordAnswerCommand = new RelayCommand(parameter => SelectTodayWordAnswer(parameter));
+        SpeakTodayWordCommand = new RelayCommand(_ => SpeakTodayWord());
+        ToggleTodayFavoriteCommand = new RelayCommand(_ => ToggleTodayFavorite());
 
         LoadProfileEditor();
         RefreshTodayWord();
@@ -163,6 +174,8 @@ public sealed class MainViewModel : ViewModelBase
     public ICommand LogoutCommand { get; }
     public ICommand DeleteAccountCommand { get; }
     public ICommand SelectTodayWordAnswerCommand { get; }
+    public ICommand SpeakTodayWordCommand { get; }
+    public ICommand ToggleTodayFavoriteCommand { get; }
 
     public string CurrentView
     {
@@ -230,6 +243,7 @@ public sealed class MainViewModel : ViewModelBase
             if (SetProperty(ref selectedWord, value) && value is not null)
             {
                 EditorWord = value.Word;
+                EditorIpa = value.Ipa;
                 EditorType = value.Type;
                 EditorMeaning = value.Meaning;
                 EditorVietnameseMeaning = value.VietnameseMeaning;
@@ -242,7 +256,31 @@ public sealed class MainViewModel : ViewModelBase
     public string EditorWord
     {
         get => editorWord;
-        set => SetProperty(ref editorWord, value);
+        set
+        {
+            if (SetProperty(ref editorWord, value))
+            {
+                if (editorIpaWasAutoFilled)
+                {
+                    editorIpaWasAutoFilled = false;
+                    EditorIpa = "";
+                }
+
+                _ = FillEditorIpaAsync(value);
+            }
+        }
+    }
+
+    public string EditorIpa
+    {
+        get => editorIpa;
+        set
+        {
+            if (SetProperty(ref editorIpa, value))
+            {
+                editorIpaWasAutoFilled = false;
+            }
+        }
     }
 
     public string EditorType
@@ -405,6 +443,12 @@ public sealed class MainViewModel : ViewModelBase
         set => SetProperty(ref profilePhone, value);
     }
 
+    public string ProfileNote
+    {
+        get => profileNote;
+        set => SetProperty(ref profileNote, value);
+    }
+
     public string ProfileMessage
     {
         get => profileMessage;
@@ -506,7 +550,31 @@ public sealed class MainViewModel : ViewModelBase
     public string NewLessonWord
     {
         get => newLessonWord;
-        set => SetProperty(ref newLessonWord, value);
+        set
+        {
+            if (SetProperty(ref newLessonWord, value))
+            {
+                if (newLessonIpaWasAutoFilled)
+                {
+                    newLessonIpaWasAutoFilled = false;
+                    NewLessonIpa = "";
+                }
+
+                _ = FillNewLessonIpaAsync(value);
+            }
+        }
+    }
+
+    public string NewLessonIpa
+    {
+        get => newLessonIpa;
+        set
+        {
+            if (SetProperty(ref newLessonIpa, value))
+            {
+                newLessonIpaWasAutoFilled = false;
+            }
+        }
     }
 
     public string NewLessonMeaning
@@ -603,6 +671,7 @@ public sealed class MainViewModel : ViewModelBase
     public IEnumerable<VocabularyWord> FilteredNewLessonWords => string.IsNullOrWhiteSpace(LessonWordSearchText)
         ? NewLessonWords
         : NewLessonWords.Where(word => word.Word.Contains(LessonWordSearchText, StringComparison.OrdinalIgnoreCase)
+            || word.Ipa.Contains(LessonWordSearchText, StringComparison.OrdinalIgnoreCase)
             || word.Meaning.Contains(LessonWordSearchText, StringComparison.OrdinalIgnoreCase)
             || word.VietnameseMeaning.Contains(LessonWordSearchText, StringComparison.OrdinalIgnoreCase)
             || word.Type.Contains(LessonWordSearchText, StringComparison.OrdinalIgnoreCase));
@@ -610,6 +679,7 @@ public sealed class MainViewModel : ViewModelBase
     public IEnumerable<VocabularyWord> FilteredWords => string.IsNullOrWhiteSpace(SearchText)
         ? Words
         : Words.Where(word => word.Word.Contains(SearchText, StringComparison.OrdinalIgnoreCase)
+            || word.Ipa.Contains(SearchText, StringComparison.OrdinalIgnoreCase)
             || word.Meaning.Contains(SearchText, StringComparison.OrdinalIgnoreCase)
             || word.VietnameseMeaning.Contains(SearchText, StringComparison.OrdinalIgnoreCase)
             || word.Type.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
@@ -630,7 +700,9 @@ public sealed class MainViewModel : ViewModelBase
     public bool ShowBottomNavigation => IsDashboardView || IsStudyView || IsQuizView || IsAccountView;
 
     public string DashboardGreeting => IsAuthenticated ? $"Chào mừng, {User.FullName}!" : "Chào mừng, bạn!";
-    public string DashboardSubtitle => IsAuthenticated ? $"Cấp độ: {User.Level}" : "Welcome to WordUp";
+    public string DashboardSubtitle => IsAuthenticated
+        ? string.IsNullOrWhiteSpace(User.Note) ? "Thêm ghi chú trong hồ sơ cá nhân" : User.Note
+        : "Welcome to WordUp";
     public string FlashcardHint => IsFlashcardBackVisible ? "Đánh giá mức độ ghi nhớ" : "Chạm để lật thẻ";
     public string StudyHeaderTitle => IsStudyFlashcardOpen
         ? SelectedStudyDeck?.Name ?? "Học từ"
@@ -646,12 +718,16 @@ public sealed class MainViewModel : ViewModelBase
     public int StudyStreakDays => CalculateStudyStreakDays();
     public int TotalLessons => Decks.Count;
     public int TotalVocabularyWords => Words.Count;
-    public int LearnedOrRememberedWords => Words.Count(word => word.LastReviewedAt is not null || word.MasteryLevel >= 5);
+    public int LearnedOrRememberedWords => Words.Count(IsLearnedOrRemembered);
     public IEnumerable<Deck> RecentDecks => Decks.Take(3);
     public Deck? ContinueLearningDeck => Decks.FirstOrDefault();
     public string ContinueLearningProgress => ContinueLearningDeck?.ProgressText ?? "Chưa có bài học nào";
     public string TodayWordText => todayWord?.Word ?? "WordUp";
-    public string TodayWordHint => todayWord?.Ipa ?? "";
+    public string TodayWordHint => string.IsNullOrWhiteSpace(todayWord?.Ipa) ? "Chưa có phiên âm" : todayWord.Ipa;
+    public string TodayFavoriteIcon => todayWord?.IsFavorite == true ? "★" : "☆";
+    public Brush TodayFavoriteForeground => todayWord?.IsFavorite == true
+        ? new SolidColorBrush(Color.FromRgb(234, 179, 8))
+        : new SolidColorBrush(Color.FromRgb(148, 153, 168));
     public string TodayWordPrompt => "Chọn nghĩa đúng của từ này";
     public string TodayChoiceA => todayWordChoices.Count > 0 ? todayWordChoices[0] : "";
     public string TodayChoiceB => todayWordChoices.Count > 1 ? todayWordChoices[1] : "";
@@ -724,6 +800,14 @@ public sealed class MainViewModel : ViewModelBase
     private void StartLesson(object? parameter)
     {
         SelectedStudyDeck = parameter as Deck ?? Decks.FirstOrDefault();
+        if (SelectedStudyDeck is null)
+        {
+            SelectTab("Study");
+            return;
+        }
+
+        SelectedTab = "Study";
+        CurrentView = "Study";
         CurrentWordIndex = 0;
         IsFlashcardBackVisible = false;
         IsAddLessonOpen = false;
@@ -746,6 +830,7 @@ public sealed class MainViewModel : ViewModelBase
         IsAddLessonOpen = true;
         NewLessonName = $"Bài học mới {Decks.Count + 1}";
         NewLessonWord = "";
+        NewLessonIpa = "";
         NewLessonMeaning = "";
         NewLessonType = "";
         NewLessonFilePath = "";
@@ -768,6 +853,7 @@ public sealed class MainViewModel : ViewModelBase
         IsAddLessonOpen = true;
         NewLessonName = lesson.Name;
         NewLessonWord = "";
+        NewLessonIpa = "";
         NewLessonMeaning = "";
         NewLessonType = "";
         NewLessonFilePath = "";
@@ -793,6 +879,7 @@ public sealed class MainViewModel : ViewModelBase
 
         editingLessonWord = word;
         NewLessonWord = word.Word;
+        NewLessonIpa = word.Ipa;
         NewLessonMeaning = string.IsNullOrWhiteSpace(word.VietnameseMeaning) ? word.Meaning : word.VietnameseMeaning;
         NewLessonType = word.Type;
         NewLessonMessage = $"Đang sửa từ {word.Word}.";
@@ -869,6 +956,7 @@ public sealed class MainViewModel : ViewModelBase
         if (editingLessonWord is not null)
         {
             editingLessonWord.Word = NewLessonWord.Trim();
+            editingLessonWord.Ipa = NewLessonIpa.Trim();
             editingLessonWord.Meaning = NewLessonMeaning.Trim();
             editingLessonWord.VietnameseMeaning = NewLessonMeaning.Trim();
             editingLessonWord.Type = string.IsNullOrWhiteSpace(NewLessonType) ? "word" : NewLessonType.Trim();
@@ -881,6 +969,7 @@ public sealed class MainViewModel : ViewModelBase
         NewLessonWords.Add(new VocabularyWord
         {
             Word = NewLessonWord.Trim(),
+            Ipa = NewLessonIpa.Trim(),
             Meaning = NewLessonMeaning.Trim(),
             VietnameseMeaning = NewLessonMeaning.Trim(),
             Type = string.IsNullOrWhiteSpace(NewLessonType) ? "word" : NewLessonType.Trim()
@@ -889,6 +978,84 @@ public sealed class MainViewModel : ViewModelBase
         ClearLessonWordEditor();
         OnPropertyChanged(nameof(FilteredNewLessonWords));
         NewLessonMessage = $"Đã thêm {NewLessonWords.Count} từ vào bài học.";
+    }
+
+    private async Task FillNewLessonIpaAsync(string word)
+    {
+        newLessonIpaLookupCancellation?.Cancel();
+
+        var requestedWord = word.Trim();
+        if (OfflineMode || string.IsNullOrWhiteSpace(requestedWord) || !string.IsNullOrWhiteSpace(NewLessonIpa))
+        {
+            return;
+        }
+
+        using var cancellation = new CancellationTokenSource();
+        newLessonIpaLookupCancellation = cancellation;
+
+        try
+        {
+            await Task.Delay(450, cancellation.Token);
+            var ipa = await pronunciationService.GetIpaAsync(requestedWord, cancellation.Token);
+            if (string.IsNullOrWhiteSpace(ipa)
+                || !string.Equals(NewLessonWord.Trim(), requestedWord, StringComparison.OrdinalIgnoreCase)
+                || !string.IsNullOrWhiteSpace(NewLessonIpa))
+            {
+                return;
+            }
+
+            NewLessonIpa = ipa;
+            newLessonIpaWasAutoFilled = true;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            if (ReferenceEquals(newLessonIpaLookupCancellation, cancellation))
+            {
+                newLessonIpaLookupCancellation = null;
+            }
+        }
+    }
+
+    private async Task FillEditorIpaAsync(string word)
+    {
+        editorIpaLookupCancellation?.Cancel();
+
+        var requestedWord = word.Trim();
+        if (OfflineMode || string.IsNullOrWhiteSpace(requestedWord) || !string.IsNullOrWhiteSpace(EditorIpa))
+        {
+            return;
+        }
+
+        using var cancellation = new CancellationTokenSource();
+        editorIpaLookupCancellation = cancellation;
+
+        try
+        {
+            await Task.Delay(450, cancellation.Token);
+            var ipa = await pronunciationService.GetIpaAsync(requestedWord, cancellation.Token);
+            if (string.IsNullOrWhiteSpace(ipa)
+                || !string.Equals(EditorWord.Trim(), requestedWord, StringComparison.OrdinalIgnoreCase)
+                || !string.IsNullOrWhiteSpace(EditorIpa))
+            {
+                return;
+            }
+
+            EditorIpa = ipa;
+            editorIpaWasAutoFilled = true;
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            if (ReferenceEquals(editorIpaLookupCancellation, cancellation))
+            {
+                editorIpaLookupCancellation = null;
+            }
+        }
     }
 
     private void ImportLessonFile()
@@ -911,10 +1078,38 @@ public sealed class MainViewModel : ViewModelBase
             NewLessonWords.Add(word);
         }
 
+        _ = FillImportedLessonIpaAsync(importedWords);
+
         OnPropertyChanged(nameof(FilteredNewLessonWords));
         NewLessonMessage = importedWords.Count == 0
             ? "Không tìm thấy dòng hợp lệ. Mỗi dòng nên có: từ, nghĩa, loại từ."
             : $"Đã nhập {importedWords.Count} từ từ tệp.";
+    }
+
+    private async Task FillImportedLessonIpaAsync(IReadOnlyCollection<VocabularyWord> importedWords)
+    {
+        if (OfflineMode || importedWords.Count == 0)
+        {
+            return;
+        }
+
+        var filledCount = 0;
+        foreach (var word in importedWords.Where(word => string.IsNullOrWhiteSpace(word.Ipa)))
+        {
+            var ipa = await pronunciationService.GetIpaAsync(word.Word);
+            if (string.IsNullOrWhiteSpace(ipa) || !string.IsNullOrWhiteSpace(word.Ipa))
+            {
+                continue;
+            }
+
+            word.Ipa = ipa;
+            filledCount++;
+        }
+
+        if (filledCount > 0)
+        {
+            NewLessonMessage = $"ÄĂ£ tá»± Ä‘iá»n IPA cho {filledCount} tá»«.";
+        }
     }
 
     private void SaveNewLesson()
@@ -939,12 +1134,10 @@ public sealed class MainViewModel : ViewModelBase
         if (editingLesson is null)
         {
             lesson.CreatedAt = lesson.UpdatedAt;
-            lesson.LearnedWords = 0;
             Decks.Add(lesson);
         }
         else
         {
-            lesson.LearnedWords = Math.Min(lesson.LearnedWords, lesson.TotalWords);
             foreach (var oldWord in Words.Where(word => word.LessonId == lesson.Id).ToList())
             {
                 Words.Remove(oldWord);
@@ -959,9 +1152,8 @@ public sealed class MainViewModel : ViewModelBase
         }
 
         SelectedStudyDeck = lesson;
+        SyncLessonProgress();
         OnPropertyChanged(nameof(FilteredWords));
-        OnPropertyChanged(nameof(FilteredDecks));
-        OnPropertyChanged(nameof(RecentDecks));
         OnPropertyChanged(nameof(CurrentStudyWords));
         OnPropertyChanged(nameof(CurrentWord));
         OnPropertyChanged(nameof(StudyProgressText));
@@ -976,6 +1168,7 @@ public sealed class MainViewModel : ViewModelBase
     {
         editingLessonWord = null;
         NewLessonWord = "";
+        NewLessonIpa = "";
         NewLessonMeaning = "";
         NewLessonType = "";
         OnLessonEditorChanged();
@@ -983,7 +1176,7 @@ public sealed class MainViewModel : ViewModelBase
 
     private void EnsureLessonIds()
     {
-        if (Decks.Count == 0 || Words.Count == 0)
+        if (Decks.Count == 0)
         {
             return;
         }
@@ -1008,10 +1201,30 @@ public sealed class MainViewModel : ViewModelBase
             }
 
             deck.TotalWords = Words.Count(word => word.LessonId == deck.Id);
-            deck.LearnedWords = Math.Min(deck.LearnedWords, deck.TotalWords);
+        }
+
+        SyncLessonProgress();
+        OnPropertyChanged(nameof(FilteredDecks));
+    }
+
+    private void SyncLessonProgress()
+    {
+        foreach (var deck in Decks)
+        {
+            var lessonWords = Words.Where(word => word.LessonId == deck.Id).ToList();
+            deck.TotalWords = lessonWords.Count;
+            deck.LearnedWords = lessonWords.Count(IsLearnedOrRemembered);
         }
 
         OnPropertyChanged(nameof(FilteredDecks));
+        OnPropertyChanged(nameof(RecentDecks));
+        OnPropertyChanged(nameof(ContinueLearningDeck));
+        OnPropertyChanged(nameof(ContinueLearningProgress));
+    }
+
+    private static bool IsLearnedOrRemembered(VocabularyWord word)
+    {
+        return word.LastReviewedAt is not null || word.MasteryLevel >= 5;
     }
 
     private void OnLessonEditorChanged()
@@ -1037,6 +1250,7 @@ public sealed class MainViewModel : ViewModelBase
             ReviewCount = word.ReviewCount,
             CorrectQuizCount = word.CorrectQuizCount,
             IncorrectQuizCount = word.IncorrectQuizCount,
+            IsFavorite = word.IsFavorite,
             LastReviewedAt = word.LastReviewedAt,
             NextReviewDate = word.NextReviewDate
         };
@@ -1085,14 +1299,28 @@ public sealed class MainViewModel : ViewModelBase
             return null;
         }
 
+        var hasIpa = LooksLikeIpa(parts[1]);
+        var meaningIndex = hasIpa ? 2 : 1;
+        var typeIndex = hasIpa ? 3 : 2;
+        var exampleIndex = hasIpa ? 4 : 3;
+
         return new VocabularyWord
         {
             Word = parts[0],
-            Meaning = parts[1],
-            VietnameseMeaning = parts[1],
-            Type = parts.Length > 2 ? parts[2] : "word",
-            Example = parts.Length > 3 ? parts[3] : ""
+            Ipa = hasIpa ? parts[1] : "",
+            Meaning = parts.Length > meaningIndex ? parts[meaningIndex] : parts[1],
+            VietnameseMeaning = parts.Length > meaningIndex ? parts[meaningIndex] : parts[1],
+            Type = parts.Length > typeIndex ? parts[typeIndex] : "word",
+            Example = parts.Length > exampleIndex ? parts[exampleIndex] : ""
         };
+    }
+
+    private static bool LooksLikeIpa(string value)
+    {
+        var trimmed = value.Trim();
+        return trimmed.Length >= 2
+            && ((trimmed.StartsWith('/') && trimmed.EndsWith('/'))
+                || (trimmed.StartsWith('[') && trimmed.EndsWith(']')));
     }
 
     private static IReadOnlyList<string> ReadDocxRows(string path)
@@ -1199,6 +1427,7 @@ public sealed class MainViewModel : ViewModelBase
 
         var rating = int.TryParse(parameter?.ToString(), out var parsedRating) ? parsedRating : 1;
         srsService.ApplyReview(CurrentWord, rating);
+        SyncLessonProgress();
         OnProgressChanged();
         SaveAppState();
         NextWord();
@@ -1418,6 +1647,7 @@ public sealed class MainViewModel : ViewModelBase
         ProfileFullName = User.FullName;
         ProfileEmail = User.Email;
         ProfilePhone = User.Phone;
+        ProfileNote = User.Note;
         ProfileMessage = "";
     }
 
@@ -1445,6 +1675,8 @@ public sealed class MainViewModel : ViewModelBase
         User.FullName = ProfileFullName.Trim();
         User.Email = ProfileEmail.Trim();
         User.Phone = ProfilePhone.Trim();
+        User.Note = ProfileNote.Trim();
+        OnPropertyChanged(nameof(DashboardSubtitle));
         ProfileMessage = "Đã lưu thông tin hồ sơ.";
         SaveAppState();
     }
@@ -1575,6 +1807,7 @@ public sealed class MainViewModel : ViewModelBase
     {
         SelectedWord = null;
         EditorWord = "";
+        EditorIpa = "";
         EditorType = "";
         EditorMeaning = "";
         EditorVietnameseMeaning = "";
@@ -1595,6 +1828,7 @@ public sealed class MainViewModel : ViewModelBase
             var word = new VocabularyWord
             {
                 Word = EditorWord.Trim(),
+                Ipa = EditorIpa.Trim(),
                 Type = string.IsNullOrWhiteSpace(EditorType) ? "word" : EditorType.Trim(),
                 Meaning = EditorMeaning.Trim(),
                 VietnameseMeaning = string.IsNullOrWhiteSpace(EditorVietnameseMeaning) ? EditorMeaning.Trim() : EditorVietnameseMeaning.Trim(),
@@ -1608,6 +1842,7 @@ public sealed class MainViewModel : ViewModelBase
         else
         {
             SelectedWord.Word = EditorWord.Trim();
+            SelectedWord.Ipa = EditorIpa.Trim();
             SelectedWord.Type = string.IsNullOrWhiteSpace(EditorType) ? "word" : EditorType.Trim();
             SelectedWord.Meaning = EditorMeaning.Trim();
             SelectedWord.VietnameseMeaning = string.IsNullOrWhiteSpace(EditorVietnameseMeaning) ? EditorMeaning.Trim() : EditorVietnameseMeaning.Trim();
@@ -1615,6 +1850,7 @@ public sealed class MainViewModel : ViewModelBase
             WordManagerMessage = $"Đã cập nhật {SelectedWord.Word}.";
         }
 
+        SyncLessonProgress();
         OnPropertyChanged(nameof(FilteredWords));
         OnPropertyChanged(nameof(CurrentWord));
         OnProgressChanged();
@@ -1646,6 +1882,7 @@ public sealed class MainViewModel : ViewModelBase
         }
 
         OnProgressChanged();
+        SyncLessonProgress();
         RefreshQuizQuestions();
         SaveAppState();
     }
@@ -1669,7 +1906,7 @@ public sealed class MainViewModel : ViewModelBase
     private void RefreshTodayWord()
     {
         var learnedWords = Words
-            .Where(word => word.LastReviewedAt is not null || word.MasteryLevel >= 5)
+            .Where(IsLearnedOrRemembered)
             .Where(word => !string.IsNullOrWhiteSpace(word.Word) && !string.IsNullOrWhiteSpace(word.VietnameseMeaning))
             .ToList();
 
@@ -1717,6 +1954,42 @@ public sealed class MainViewModel : ViewModelBase
         todayWordCorrectIndex = todayWordChoices.ToList().IndexOf(todayWord.VietnameseMeaning);
         todayWordSelectedIndex = -1;
         OnTodayWordChanged();
+    }
+
+    private void SpeakTodayWord()
+    {
+        if (todayWord is null || string.IsNullOrWhiteSpace(todayWord.Word))
+        {
+            return;
+        }
+
+        try
+        {
+            speechVoice ??= Activator.CreateInstance(Type.GetTypeFromProgID("SAPI.SpVoice")!);
+            speechVoice?.GetType().InvokeMember(
+                "Speak",
+                System.Reflection.BindingFlags.InvokeMethod,
+                binder: null,
+                target: speechVoice,
+                args: [todayWord.Word, 1]);
+        }
+        catch
+        {
+            // Speech is optional; missing Windows voices should not break the dashboard.
+        }
+    }
+
+    private void ToggleTodayFavorite()
+    {
+        if (todayWord is null)
+        {
+            return;
+        }
+
+        todayWord.IsFavorite = !todayWord.IsFavorite;
+        OnPropertyChanged(nameof(TodayFavoriteIcon));
+        OnPropertyChanged(nameof(TodayFavoriteForeground));
+        SaveAppState();
     }
 
     private Brush GetTodayChoiceBackground(int index)
@@ -1775,6 +2048,8 @@ public sealed class MainViewModel : ViewModelBase
     {
         OnPropertyChanged(nameof(TodayWordText));
         OnPropertyChanged(nameof(TodayWordHint));
+        OnPropertyChanged(nameof(TodayFavoriteIcon));
+        OnPropertyChanged(nameof(TodayFavoriteForeground));
         OnPropertyChanged(nameof(TodayChoiceA));
         OnPropertyChanged(nameof(TodayChoiceB));
         OnPropertyChanged(nameof(TodayChoiceC));
@@ -1813,6 +2088,7 @@ public sealed class MainViewModel : ViewModelBase
         User.Email = state.User.Email;
         User.Phone = state.User.Phone;
         User.Level = state.User.Level;
+        User.Note = state.User.Note;
 
         Decks.Clear();
         foreach (var deck in state.Decks)
@@ -1848,6 +2124,7 @@ public sealed class MainViewModel : ViewModelBase
         User.Email = "";
         User.Phone = "";
         User.Level = "";
+        User.Note = "";
         ClearLearningData();
         LoadProfileEditor();
     }

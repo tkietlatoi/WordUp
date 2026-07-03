@@ -23,6 +23,37 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="TodayIconButton" TargetType="Button">
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root"
+                                Background="{TemplateBinding Background}"
+                                BorderThickness="0"
+                                CornerRadius="18"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#F0EEFA" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.72" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <StackPanel Margin="22,18,22,22">
@@ -79,26 +110,39 @@
         <TextBlock Text="Tiếp tục học" Style="{StaticResource SectionTitleText}" Visibility="{Binding IsAuthenticated, Converter={StaticResource BoolToVisibility}}" />
         <Border Style="{StaticResource Card}" Padding="16" Visibility="{Binding IsAuthenticated, Converter={StaticResource BoolToVisibility}}">
             <Grid>
-                <StackPanel Margin="0,0,112,0">
-                    <TextBlock Text="{Binding ContinueLearningDeck.Name}" FontWeight="Bold" FontSize="16" />
-                    <TextBlock Text="{Binding ContinueLearningProgress}" Style="{StaticResource MutedText}" Margin="0,5,0,0" />
-                    <TextBlock Text="Bấm tiếp tục để quay lại bài học gần đây nhất." Style="{StaticResource MutedText}" Margin="0,8,0,0" />
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                    <TextBlock Text="{Binding ContinueLearningDeck.Name}" FontWeight="Bold" FontSize="16" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding ContinueLearningProgress}" Style="{StaticResource MutedText}" Margin="0,5,0,0" TextWrapping="Wrap" />
+                    <TextBlock Text="Bấm tiếp tục để quay lại bài học gần đây nhất." Style="{StaticResource MutedText}" Margin="0,8,0,0" TextWrapping="Wrap" />
                 </StackPanel>
-                <Button Content="Tiếp tục" Style="{StaticResource PrimaryButton}" Width="96" Height="38" HorizontalAlignment="Right" Command="{Binding SelectTabCommand}" CommandParameter="Study" />
+                <Button Grid.Column="1" Content="Tiếp tục" Style="{StaticResource PrimaryButton}" Width="96" Height="38" HorizontalAlignment="Right" Command="{Binding StartLessonCommand}" CommandParameter="{Binding ContinueLearningDeck}" />
             </Grid>
         </Border>
 
         <TextBlock Text="Bài học gần đây" Style="{StaticResource SectionTitleText}" />
         <ItemsControl ItemsSource="{Binding RecentDecks}">
+            <ItemsControl.ItemContainerStyle>
+                <Style TargetType="ContentPresenter">
+                    <Setter Property="HorizontalAlignment" Value="Stretch" />
+                </Style>
+            </ItemsControl.ItemContainerStyle>
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                    <Border Style="{StaticResource Card}" Padding="16">
+                    <Border Style="{StaticResource Card}" Padding="16" HorizontalAlignment="Stretch">
                         <Grid>
-                            <StackPanel Margin="0,0,100,0">
-                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="15" />
-                                <TextBlock Text="{Binding ProgressText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="15" TextWrapping="Wrap" />
+                                <TextBlock Text="{Binding ProgressText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" TextWrapping="Wrap" />
                             </StackPanel>
-                            <Button Content="Học ngay" Style="{StaticResource PrimaryButton}" Width="88" Height="38" HorizontalAlignment="Right" Command="{Binding DataContext.SelectTabCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="Study" />
+                            <Button Grid.Column="1" Content="Học ngay" Style="{StaticResource PrimaryButton}" Width="88" Height="38" HorizontalAlignment="Right" Command="{Binding DataContext.StartLessonCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" />
                         </Grid>
                     </Border>
                 </DataTemplate>
@@ -108,8 +152,24 @@
         <TextBlock Text="Từ hôm nay" Style="{StaticResource SectionTitleText}" Visibility="{Binding IsAuthenticated, Converter={StaticResource BoolToVisibility}}" />
         <Border Style="{StaticResource Card}" Padding="16" Visibility="{Binding IsAuthenticated, Converter={StaticResource BoolToVisibility}}">
             <StackPanel>
-                <TextBlock Text="{Binding TodayWordText}" FontSize="24" FontWeight="Bold" TextAlignment="Center" Foreground="{StaticResource IndigoBrush}" />
-                <TextBlock Text="{Binding TodayWordHint}" Style="{StaticResource MutedText}" TextAlignment="Center" Margin="0,4,0,8" />
+                <Grid Margin="0,0,0,4">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <TextBlock Text="{Binding TodayWordText}" FontSize="24" FontWeight="Bold" TextAlignment="Center" Foreground="{StaticResource IndigoBrush}" VerticalAlignment="Center" />
+                        <Button Content="🔊"
+                                Style="{StaticResource TodayIconButton}"
+                                Foreground="{StaticResource IndigoBrush}"
+                                Margin="8,0,0,0"
+                                ToolTip="Nghe phát âm"
+                                Command="{Binding SpeakTodayWordCommand}" />
+                    </StackPanel>
+                    <Button Content="{Binding TodayFavoriteIcon}"
+                            Style="{StaticResource TodayIconButton}"
+                            Foreground="{Binding TodayFavoriteForeground}"
+                            HorizontalAlignment="Right"
+                            ToolTip="Thêm vào yêu thích"
+                            Command="{Binding ToggleTodayFavoriteCommand}" />
+                </Grid>
+                <TextBlock Text="{Binding TodayWordHint}" Style="{StaticResource MutedText}" FontSize="14" TextAlignment="Center" Margin="0,0,0,8" />
                 <TextBlock Text="{Binding TodayWordPrompt}" Style="{StaticResource MutedText}" TextAlignment="Center" Margin="0,0,0,14" />
                 <Button Content="{Binding TodayChoiceA, StringFormat=A. {0}}" Style="{StaticResource OutlineButton}" Background="{Binding TodayChoiceABackground}" BorderBrush="{Binding TodayChoiceABorder}" IsHitTestVisible="{Binding CanSelectTodayWordAnswer}" HorizontalContentAlignment="Left" Margin="0,0,0,8" Command="{Binding SelectTodayWordAnswerCommand}" CommandParameter="0" />
                 <Button Content="{Binding TodayChoiceB, StringFormat=B. {0}}" Style="{StaticResource OutlineButton}" Background="{Binding TodayChoiceBBackground}" BorderBrush="{Binding TodayChoiceBBorder}" IsHitTestVisible="{Binding CanSelectTodayWordAnswer}" HorizontalContentAlignment="Left" Margin="0,0,0,8" Command="{Binding SelectTodayWordAnswerCommand}" CommandParameter="1" />
