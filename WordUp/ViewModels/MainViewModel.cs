@@ -7,6 +7,7 @@ using Microsoft.Win32;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using WordUp.Models;
 using WordUp.Services;
@@ -39,6 +40,9 @@ public sealed class MainViewModel : ViewModelBase
     private TimeSpan quizCompletedTime = TimeSpan.Zero;
     private string quizSubmitMessage = "";
     private bool isIncompleteQuizSubmitDialogOpen;
+    private bool isDeleteAccountDialogOpen;
+    private bool isAvatarDialogOpen;
+    private bool isLogoutDialogOpen;
     private string selectedTab = "Dashboard";
     private string lessonSearchText = "";
     private Deck? selectedStudyDeck;
@@ -87,6 +91,7 @@ public sealed class MainViewModel : ViewModelBase
     private bool dailyReminders = true;
     private bool autoPlayAudio;
     private bool offlineMode;
+    private bool isDarkMode;
     private string settingsMessage = "";
     private VocabularyWord? todayWord;
     private IReadOnlyList<string> todayWordChoices = ["", "", "", ""];
@@ -109,6 +114,7 @@ public sealed class MainViewModel : ViewModelBase
         DailyReminders = savedState.Settings.DailyReminders;
         AutoPlayAudio = savedState.Settings.AutoPlayAudio;
         OfflineMode = savedState.Settings.OfflineMode;
+        IsDarkMode = savedState.Settings.IsDarkMode;
 
         NavigateCommand = new RelayCommand(parameter => Navigate(parameter?.ToString() ?? "Dashboard"));
         SelectTabCommand = new RelayCommand(parameter => SelectTab(parameter?.ToString() ?? "Dashboard"));
@@ -150,11 +156,18 @@ public sealed class MainViewModel : ViewModelBase
         CancelProfileCommand = new RelayCommand(_ => LoadProfileEditor());
         ResetQuizCommand = new RelayCommand(_ => ResetQuiz());
         SaveSettingsCommand = new RelayCommand(_ => SaveSettings());
-        LogoutCommand = new RelayCommand(_ => Logout());
-        DeleteAccountCommand = new RelayCommand(_ => DeleteAccount());
+        LogoutCommand = new RelayCommand(_ => IsLogoutDialogOpen = true);
+        CancelLogoutCommand = new RelayCommand(_ => IsLogoutDialogOpen = false);
+        ConfirmLogoutCommand = new RelayCommand(_ => Logout());
+        DeleteAccountCommand = new RelayCommand(_ => IsDeleteAccountDialogOpen = true);
+        CancelDeleteAccountCommand = new RelayCommand(_ => IsDeleteAccountDialogOpen = false);
+        ConfirmDeleteAccountCommand = new RelayCommand(_ => DeleteAccount());
         SelectTodayWordAnswerCommand = new RelayCommand(parameter => SelectTodayWordAnswer(parameter));
         SpeakTodayWordCommand = new RelayCommand(_ => SpeakTodayWord());
         ToggleTodayFavoriteCommand = new RelayCommand(_ => ToggleTodayFavorite());
+        OpenAvatarDialogCommand = new RelayCommand(_ => IsAvatarDialogOpen = true);
+        CloseAvatarDialogCommand = new RelayCommand(_ => IsAvatarDialogOpen = false);
+        ImportAvatarCommand = new RelayCommand(_ => ImportAvatar());
 
         studyAutoTimer = new DispatcherTimer
         {
@@ -173,6 +186,7 @@ public sealed class MainViewModel : ViewModelBase
 
         LoadProfileEditor();
         RefreshTodayWord();
+        ApplyTheme();
     }
 
     public UserProfile User { get; }
@@ -223,10 +237,17 @@ public sealed class MainViewModel : ViewModelBase
     public ICommand ResetQuizCommand { get; }
     public ICommand SaveSettingsCommand { get; }
     public ICommand LogoutCommand { get; }
+    public ICommand CancelLogoutCommand { get; }
+    public ICommand ConfirmLogoutCommand { get; }
     public ICommand DeleteAccountCommand { get; }
+    public ICommand CancelDeleteAccountCommand { get; }
+    public ICommand ConfirmDeleteAccountCommand { get; }
     public ICommand SelectTodayWordAnswerCommand { get; }
     public ICommand SpeakTodayWordCommand { get; }
     public ICommand ToggleTodayFavoriteCommand { get; }
+    public ICommand OpenAvatarDialogCommand { get; }
+    public ICommand CloseAvatarDialogCommand { get; }
+    public ICommand ImportAvatarCommand { get; }
 
     public string CurrentView
     {
@@ -535,6 +556,19 @@ public sealed class MainViewModel : ViewModelBase
         set => SetProperty(ref offlineMode, value);
     }
 
+    public bool IsDarkMode
+    {
+        get => isDarkMode;
+        set
+        {
+            if (SetProperty(ref isDarkMode, value))
+            {
+                ApplyTheme();
+                SaveAppState();
+            }
+        }
+    }
+
     public string SettingsMessage
     {
         get => settingsMessage;
@@ -770,6 +804,24 @@ public sealed class MainViewModel : ViewModelBase
     {
         get => isIncompleteQuizSubmitDialogOpen;
         set => SetProperty(ref isIncompleteQuizSubmitDialogOpen, value);
+    }
+
+    public bool IsDeleteAccountDialogOpen
+    {
+        get => isDeleteAccountDialogOpen;
+        set => SetProperty(ref isDeleteAccountDialogOpen, value);
+    }
+
+    public bool IsAvatarDialogOpen
+    {
+        get => isAvatarDialogOpen;
+        set => SetProperty(ref isAvatarDialogOpen, value);
+    }
+
+    public bool IsLogoutDialogOpen
+    {
+        get => isLogoutDialogOpen;
+        set => SetProperty(ref isLogoutDialogOpen, value);
     }
 
     public IReadOnlyList<VocabularyWord> CurrentStudyWords
@@ -2094,8 +2146,65 @@ public sealed class MainViewModel : ViewModelBase
         SettingsMessage = "Đã lưu cài đặt.";
     }
 
+    private void ImportAvatar()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Chọn ảnh đại diện",
+            Filter = "Image files (*.png;*.jpg;*.jpeg;*.bmp)|*.png;*.jpg;*.jpeg;*.bmp|All files (*.*)|*.*"
+        };
+
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        User.AvatarPath = dialog.FileName;
+        IsAvatarDialogOpen = false;
+        SaveAppState();
+    }
+
+    private void ApplyTheme()
+    {
+        if (Application.Current is null)
+        {
+            return;
+        }
+
+        if (IsDarkMode)
+        {
+            SetBrush("AppBackgroundBrush", Color.FromRgb(24, 26, 36));
+            SetBrush("SurfaceBrush", Color.FromRgb(35, 38, 52));
+            SetBrush("MutedTextBrush", Color.FromRgb(185, 190, 205));
+            SetBrush("PrimaryTextBrush", Color.FromRgb(242, 244, 250));
+            SetBrush("BorderBrush", Color.FromRgb(67, 72, 94));
+            SetBrush("IndigoDarkBrush", Color.FromRgb(204, 211, 255));
+        }
+        else
+        {
+            SetBrush("AppBackgroundBrush", Color.FromRgb(247, 244, 252));
+            SetBrush("SurfaceBrush", Colors.White);
+            SetBrush("MutedTextBrush", Color.FromRgb(105, 112, 137));
+            SetBrush("PrimaryTextBrush", Color.FromRgb(17, 19, 34));
+            SetBrush("BorderBrush", Color.FromRgb(221, 217, 235));
+            SetBrush("IndigoDarkBrush", Color.FromRgb(21, 32, 138));
+        }
+    }
+
+    private static void SetBrush(string resourceKey, Color color)
+    {
+        if (Application.Current.Resources[resourceKey] is SolidColorBrush brush && !brush.IsFrozen)
+        {
+            brush.Color = color;
+            return;
+        }
+
+        Application.Current.Resources[resourceKey] = new SolidColorBrush(color);
+    }
+
     private void Logout()
     {
+        IsLogoutDialogOpen = false;
         IsAuthenticated = false;
         pendingAuthenticatedView = "Dashboard";
         LoginPassword = "";
@@ -2107,6 +2216,7 @@ public sealed class MainViewModel : ViewModelBase
     private void DeleteAccount()
     {
         var emailToDelete = User.Email;
+        IsDeleteAccountDialogOpen = false;
         IsAuthenticated = false;
         pendingAuthenticatedView = "Dashboard";
         storageService.Delete(emailToDelete);
@@ -2115,6 +2225,7 @@ public sealed class MainViewModel : ViewModelBase
         DailyReminders = true;
         AutoPlayAudio = false;
         OfflineMode = false;
+        IsDarkMode = false;
         CurrentWordIndex = 0;
         ClearWordEditor();
         LoadProfileEditor();
@@ -2553,6 +2664,7 @@ public sealed class MainViewModel : ViewModelBase
         User.Phone = state.User.Phone;
         User.Level = state.User.Level;
         User.Note = state.User.Note;
+        User.AvatarPath = state.User.AvatarPath;
 
         Decks.Clear();
         foreach (var deck in state.Decks)
@@ -2570,6 +2682,7 @@ public sealed class MainViewModel : ViewModelBase
         DailyReminders = state.Settings.DailyReminders;
         AutoPlayAudio = state.Settings.AutoPlayAudio;
         OfflineMode = state.Settings.OfflineMode;
+        IsDarkMode = state.Settings.IsDarkMode;
         SelectedStudyDeck = Decks.FirstOrDefault();
         CurrentWordIndex = 0;
         ClearWordEditor();
@@ -2589,6 +2702,7 @@ public sealed class MainViewModel : ViewModelBase
         User.Phone = "";
         User.Level = "";
         User.Note = "";
+        User.AvatarPath = "";
         ClearLearningData();
         LoadProfileEditor();
     }
@@ -2621,7 +2735,8 @@ public sealed class MainViewModel : ViewModelBase
                 AudioVolume = AudioVolume,
                 DailyReminders = DailyReminders,
                 AutoPlayAudio = AutoPlayAudio,
-                OfflineMode = OfflineMode
+                OfflineMode = OfflineMode,
+                IsDarkMode = IsDarkMode
             }
         });
     }

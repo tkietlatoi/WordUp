@@ -62,7 +62,17 @@
                 <TextBlock Text="{Binding DashboardGreeting}" Style="{StaticResource PageTitleText}" />
                 <TextBlock Text="{Binding DashboardSubtitle}" Style="{StaticResource MutedText}" Margin="0,6,0,0" TextWrapping="Wrap" />
             </StackPanel>
-            <Button Content="{Binding User.Initials}" Style="{StaticResource AvatarButton}" HorizontalAlignment="Right" Command="{Binding NavigateCommand}" CommandParameter="Account" Visibility="{Binding IsAuthenticated, Converter={StaticResource BoolToVisibility}}" />
+            <Button Style="{StaticResource AvatarButton}" HorizontalAlignment="Right" Command="{Binding NavigateCommand}" CommandParameter="Account" Visibility="{Binding IsAuthenticated, Converter={StaticResource BoolToVisibility}}">
+                <Grid Width="48" Height="48">
+                    <Ellipse Fill="#F0EEFA" />
+                    <Ellipse Visibility="{Binding User.HasAvatar, Converter={StaticResource BoolToVisibility}}">
+                        <Ellipse.Fill>
+                            <ImageBrush ImageSource="{Binding User.AvatarImage}" Stretch="UniformToFill" />
+                        </Ellipse.Fill>
+                    </Ellipse>
+                    <TextBlock Text="{Binding User.Initials}" Foreground="{StaticResource IndigoBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding User.HasAvatar, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" />
+                </Grid>
+            </Button>
             <Button Content="Đăng nhập" Style="{StaticResource PrimaryButton}" Width="104" Height="38" Padding="10,0" HorizontalAlignment="Right" Command="{Binding NavigateCommand}" CommandParameter="Login" Visibility="{Binding IsGuest, Converter={StaticResource BoolToVisibility}}" />
         </Grid>
 

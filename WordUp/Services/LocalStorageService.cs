@@ -85,7 +85,7 @@ public sealed class LocalStorageService
         using var connection = OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT full_name, email, phone, level, note, password_hash
+            SELECT full_name, email, phone, level, note, avatar_path, password_hash
             FROM accounts
             WHERE lower(email) = lower($contact)
                OR phone = $contact
@@ -94,7 +94,7 @@ public sealed class LocalStorageService
         command.Parameters.AddWithValue("$contact", trimmedContact);
 
         using var reader = command.ExecuteReader();
-        if (!reader.Read() || !VerifyPassword(password, reader.GetString(5)))
+        if (!reader.Read() || !VerifyPassword(password, reader.GetString(6)))
         {
             return false;
         }
@@ -104,6 +104,7 @@ public sealed class LocalStorageService
         targetUser.Phone = reader.GetString(2);
         targetUser.Level = reader.GetString(3);
         targetUser.Note = reader.GetString(4);
+        targetUser.AvatarPath = reader.GetString(5);
         return true;
     }
 
@@ -209,6 +210,7 @@ public sealed class LocalStorageService
                 phone TEXT NOT NULL DEFAULT '',
                 level TEXT NOT NULL DEFAULT '',
                 note TEXT NOT NULL DEFAULT '',
+                avatar_path TEXT NOT NULL DEFAULT '',
                 password_hash TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -250,6 +252,7 @@ public sealed class LocalStorageService
                 daily_reminders INTEGER NOT NULL DEFAULT 1,
                 auto_play_audio INTEGER NOT NULL DEFAULT 0,
                 offline_mode INTEGER NOT NULL DEFAULT 0,
+                is_dark_mode INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY (account_email) REFERENCES accounts(email) ON DELETE CASCADE
             );
 
@@ -258,6 +261,8 @@ public sealed class LocalStorageService
             """;
         command.ExecuteNonQuery();
         EnsureAccountNoteColumn(connection);
+        EnsureAccountAvatarPathColumn(connection);
+        EnsureSettingsDarkModeColumn(connection);
         EnsureLessonWordFavoriteColumn(connection);
     }
 
@@ -292,6 +297,30 @@ public sealed class LocalStorageService
 
         using var command = connection.CreateCommand();
         command.CommandText = "ALTER TABLE accounts ADD COLUMN note TEXT NOT NULL DEFAULT '';";
+        command.ExecuteNonQuery();
+    }
+
+    private static void EnsureAccountAvatarPathColumn(SqliteConnection connection)
+    {
+        if (!TableExists(connection, "accounts") || ColumnExists(connection, "accounts", "avatar_path"))
+        {
+            return;
+        }
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "ALTER TABLE accounts ADD COLUMN avatar_path TEXT NOT NULL DEFAULT '';";
+        command.ExecuteNonQuery();
+    }
+
+    private static void EnsureSettingsDarkModeColumn(SqliteConnection connection)
+    {
+        if (!TableExists(connection, "settings") || ColumnExists(connection, "settings", "is_dark_mode"))
+        {
+            return;
+        }
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "ALTER TABLE settings ADD COLUMN is_dark_mode INTEGER NOT NULL DEFAULT 0;";
         command.ExecuteNonQuery();
     }
 
@@ -350,7 +379,7 @@ public sealed class LocalStorageService
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT full_name, email, phone, level, note
+            SELECT full_name, email, phone, level, note, avatar_path
             FROM accounts
             WHERE lower(email) = lower($email)
             LIMIT 1;
@@ -369,7 +398,8 @@ public sealed class LocalStorageService
             Email = reader.GetString(1),
             Phone = reader.GetString(2),
             Level = reader.GetString(3),
-            Note = reader.GetString(4)
+            Note = reader.GetString(4),
+            AvatarPath = reader.GetString(5)
         };
     }
 
@@ -446,7 +476,7 @@ public sealed class LocalStorageService
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT audio_volume, daily_reminders, auto_play_audio, offline_mode
+            SELECT audio_volume, daily_reminders, auto_play_audio, offline_mode, is_dark_mode
             FROM settings
             WHERE lower(account_email) = lower($accountEmail);
             """;
@@ -463,7 +493,8 @@ public sealed class LocalStorageService
             AudioVolume = reader.GetDouble(0),
             DailyReminders = reader.GetInt32(1) == 1,
             AutoPlayAudio = reader.GetInt32(2) == 1,
-            OfflineMode = reader.GetInt32(3) == 1
+            OfflineMode = reader.GetInt32(3) == 1,
+            IsDarkMode = reader.GetInt32(4) == 1
         };
     }
 
@@ -499,13 +530,14 @@ public sealed class LocalStorageService
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
-            INSERT INTO accounts (email, full_name, phone, level, note, password_hash, updated_at)
-            VALUES ($email, $fullName, $phone, $level, $note, $passwordHash, CURRENT_TIMESTAMP)
+            INSERT INTO accounts (email, full_name, phone, level, note, avatar_path, password_hash, updated_at)
+            VALUES ($email, $fullName, $phone, $level, $note, $avatarPath, $passwordHash, CURRENT_TIMESTAMP)
             ON CONFLICT(email) DO UPDATE SET
                 full_name = excluded.full_name,
                 phone = excluded.phone,
                 level = excluded.level,
                 note = excluded.note,
+                avatar_path = excluded.avatar_path,
                 updated_at = CURRENT_TIMESTAMP;
             """;
         command.Parameters.AddWithValue("$email", user.Email.Trim());
@@ -513,6 +545,7 @@ public sealed class LocalStorageService
         command.Parameters.AddWithValue("$phone", user.Phone.Trim());
         command.Parameters.AddWithValue("$level", user.Level.Trim());
         command.Parameters.AddWithValue("$note", user.Note.Trim());
+        command.Parameters.AddWithValue("$avatarPath", user.AvatarPath.Trim());
         command.Parameters.AddWithValue("$passwordHash", passwordHash);
         command.ExecuteNonQuery();
     }
@@ -625,19 +658,21 @@ public sealed class LocalStorageService
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
-            INSERT INTO settings (account_email, audio_volume, daily_reminders, auto_play_audio, offline_mode)
-            VALUES ($accountEmail, $audioVolume, $dailyReminders, $autoPlayAudio, $offlineMode)
+            INSERT INTO settings (account_email, audio_volume, daily_reminders, auto_play_audio, offline_mode, is_dark_mode)
+            VALUES ($accountEmail, $audioVolume, $dailyReminders, $autoPlayAudio, $offlineMode, $isDarkMode)
             ON CONFLICT(account_email) DO UPDATE SET
                 audio_volume = excluded.audio_volume,
                 daily_reminders = excluded.daily_reminders,
                 auto_play_audio = excluded.auto_play_audio,
-                offline_mode = excluded.offline_mode;
+                offline_mode = excluded.offline_mode,
+                is_dark_mode = excluded.is_dark_mode;
             """;
         command.Parameters.AddWithValue("$accountEmail", accountEmail.Trim());
         command.Parameters.AddWithValue("$audioVolume", settings.AudioVolume);
         command.Parameters.AddWithValue("$dailyReminders", settings.DailyReminders ? 1 : 0);
         command.Parameters.AddWithValue("$autoPlayAudio", settings.AutoPlayAudio ? 1 : 0);
         command.Parameters.AddWithValue("$offlineMode", settings.OfflineMode ? 1 : 0);
+        command.Parameters.AddWithValue("$isDarkMode", settings.IsDarkMode ? 1 : 0);
         command.ExecuteNonQuery();
     }
 

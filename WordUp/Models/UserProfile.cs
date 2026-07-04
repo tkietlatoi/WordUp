@@ -1,5 +1,8 @@
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace WordUp.Models;
 
@@ -10,6 +13,7 @@ public sealed class UserProfile : INotifyPropertyChanged
     private string phone = "";
     private string level = "";
     private string note = "";
+    private string avatarPath = "";
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -47,6 +51,45 @@ public sealed class UserProfile : INotifyPropertyChanged
     {
         get => note;
         set => SetProperty(ref note, value);
+    }
+
+    public string AvatarPath
+    {
+        get => avatarPath;
+        set
+        {
+            if (SetProperty(ref avatarPath, value))
+            {
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(HasAvatar)));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AvatarImage)));
+            }
+        }
+    }
+
+    public bool HasAvatar => AvatarImage is not null;
+    public ImageSource? AvatarImage => CreateAvatarImage();
+
+    private ImageSource? CreateAvatarImage()
+    {
+        if (string.IsNullOrWhiteSpace(AvatarPath) || !File.Exists(AvatarPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            var image = new BitmapImage();
+            image.BeginInit();
+            image.CacheOption = BitmapCacheOption.OnLoad;
+            image.UriSource = new Uri(AvatarPath, UriKind.Absolute);
+            image.EndInit();
+            image.Freeze();
+            return image;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     public string Initials

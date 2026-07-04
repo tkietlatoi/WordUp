@@ -5,6 +5,7 @@
     <Color x:Key="SurfaceColor">#FFFFFF</Color>
     <Color x:Key="AppBackgroundColor">#F7F4FC</Color>
     <Color x:Key="MutedTextColor">#697089</Color>
+    <Color x:Key="PrimaryTextColor">#111322</Color>
     <Color x:Key="BorderColor">#DDD9EB</Color>
     <Color x:Key="DangerColor">#C8202F</Color>
     <Color x:Key="SuccessColor">#22A06B</Color>
@@ -14,6 +15,7 @@
     <SolidColorBrush x:Key="SurfaceBrush" Color="{StaticResource SurfaceColor}" />
     <SolidColorBrush x:Key="AppBackgroundBrush" Color="{StaticResource AppBackgroundColor}" />
     <SolidColorBrush x:Key="MutedTextBrush" Color="{StaticResource MutedTextColor}" />
+    <SolidColorBrush x:Key="PrimaryTextBrush" Color="{StaticResource PrimaryTextColor}" />
     <SolidColorBrush x:Key="BorderBrush" Color="{StaticResource BorderColor}" />
     <SolidColorBrush x:Key="DangerBrush" Color="{StaticResource DangerColor}" />
     <SolidColorBrush x:Key="SuccessBrush" Color="{StaticResource SuccessColor}" />

@@ -6,4 +6,5 @@ public sealed class SettingsState
     public bool DailyReminders { get; set; } = true;
     public bool AutoPlayAudio { get; set; }
     public bool OfflineMode { get; set; }
+    public bool IsDarkMode { get; set; }
 }

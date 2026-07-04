@@ -2,14 +2,14 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Style TargetType="TextBlock">
         <Setter Property="FontFamily" Value="Segoe UI" />
-        <Setter Property="Foreground" Value="#111322" />
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
 
     <Style x:Key="PageTitleText" TargetType="TextBlock">
         <Setter Property="FontSize" Value="24" />
         <Setter Property="FontWeight" Value="Bold" />
-        <Setter Property="Foreground" Value="{StaticResource IndigoDarkBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource IndigoDarkBrush}" />
     </Style>
 
     <Style x:Key="SectionTitleText" TargetType="TextBlock">
@@ -19,13 +19,13 @@
     </Style>
 
     <Style x:Key="MutedText" TargetType="TextBlock">
-        <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
         <Setter Property="FontSize" Value="12" />
     </Style>
 
     <Style x:Key="Card" TargetType="Border">
-        <Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
-        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="12" />
         <Setter Property="Padding" Value="18" />
@@ -38,7 +38,7 @@
     </Style>
 
     <Style x:Key="RoundedButtonBase" TargetType="Button">
-        <Setter Property="Background" Value="{StaticResource IndigoBrush}" />
+        <Setter Property="Background" Value="{DynamicResource IndigoBrush}" />
         <Setter Property="Foreground" Value="White" />
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Height" Value="42" />
@@ -85,13 +85,13 @@
 
     <Style x:Key="OutlineButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
         <Setter Property="Background" Value="White" />
-        <Setter Property="Foreground" Value="{StaticResource IndigoBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource IndigoBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="BorderBrush" Value="{StaticResource IndigoBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource IndigoBrush}" />
     </Style>
 
     <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
-        <Setter Property="Background" Value="{StaticResource DangerBrush}" />
+        <Setter Property="Background" Value="{DynamicResource DangerBrush}" />
         <Setter Property="Foreground" Value="White" />
     </Style>
 
@@ -111,10 +111,10 @@
                                       Margin="{TemplateBinding Padding}" />
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter Property="Foreground" Value="{StaticResource IndigoBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource IndigoBrush}" />
                         </Trigger>
                         <Trigger Property="IsKeyboardFocused" Value="True">
-                            <Setter Property="Foreground" Value="{StaticResource IndigoBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource IndigoBrush}" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter Property="Opacity" Value="0.78" />
