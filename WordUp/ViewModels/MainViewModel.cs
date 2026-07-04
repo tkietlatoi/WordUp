@@ -16,6 +16,14 @@ namespace WordUp.ViewModels;
 
 public sealed class MainViewModel : ViewModelBase
 {
+    private static readonly QuizQuestion EmptyQuizQuestion = new()
+    {
+        Term = "",
+        Prompt = "",
+        Choices = ["", "", "", ""],
+        CorrectIndex = 0
+    };
+
     private readonly SampleDataService dataService = new();
     private readonly LocalStorageService storageService = new();
     private readonly SrsService srsService = new();
@@ -39,6 +47,11 @@ public sealed class MainViewModel : ViewModelBase
     private TimeSpan quizElapsedTime = TimeSpan.Zero;
     private TimeSpan quizCompletedTime = TimeSpan.Zero;
     private string quizSubmitMessage = "";
+    private bool isQuizInProgress;
+    private bool isQuizSettingsOpen;
+    private int quizQuestionLimit = 20;
+    private string practiceTab = "Practice";
+    private string practiceWordSource = "Learned";
     private bool isIncompleteQuizSubmitDialogOpen;
     private bool isDeleteAccountDialogOpen;
     private bool isAvatarDialogOpen;
@@ -140,6 +153,13 @@ public sealed class MainViewModel : ViewModelBase
         RestartLessonCommand = new RelayCommand(_ => RestartLesson());
         BackToLessonsFromCompleteCommand = new RelayCommand(_ => BackToLessonsFromComplete());
         StartQuizFromLessonCommand = new RelayCommand(_ => StartQuizFromLesson());
+        StartPracticeCommand = new RelayCommand(_ => StartPractice());
+        ToggleQuizSettingsCommand = new RelayCommand(_ => IsQuizSettingsOpen = !IsQuizSettingsOpen);
+        CloseQuizSettingsCommand = new RelayCommand(_ => IsQuizSettingsOpen = false);
+        SelectPracticeTabCommand = new RelayCommand(parameter => SelectPracticeTab(parameter?.ToString() ?? "Practice"));
+        SelectPracticeWordSourceCommand = new RelayCommand(parameter => SelectPracticeWordSource(parameter?.ToString() ?? "Learned"));
+        IncreaseQuizQuestionLimitCommand = new RelayCommand(_ => QuizQuestionLimit += 1);
+        DecreaseQuizQuestionLimitCommand = new RelayCommand(_ => QuizQuestionLimit -= 1);
         SelectQuizAnswerCommand = new RelayCommand(parameter => SelectQuizAnswer(parameter));
         PreviousQuizCommand = new RelayCommand(_ => PreviousQuiz());
         NextQuizCommand = new RelayCommand(_ => NextQuiz());
@@ -221,6 +241,13 @@ public sealed class MainViewModel : ViewModelBase
     public ICommand RestartLessonCommand { get; }
     public ICommand BackToLessonsFromCompleteCommand { get; }
     public ICommand StartQuizFromLessonCommand { get; }
+    public ICommand StartPracticeCommand { get; }
+    public ICommand ToggleQuizSettingsCommand { get; }
+    public ICommand CloseQuizSettingsCommand { get; }
+    public ICommand SelectPracticeTabCommand { get; }
+    public ICommand SelectPracticeWordSourceCommand { get; }
+    public ICommand IncreaseQuizQuestionLimitCommand { get; }
+    public ICommand DecreaseQuizQuestionLimitCommand { get; }
     public ICommand SelectQuizAnswerCommand { get; }
     public ICommand PreviousQuizCommand { get; }
     public ICommand NextQuizCommand { get; }
@@ -817,6 +844,87 @@ public sealed class MainViewModel : ViewModelBase
         set => SetProperty(ref isIncompleteQuizSubmitDialogOpen, value);
     }
 
+    public bool IsQuizInProgress
+    {
+        get => isQuizInProgress;
+        set
+        {
+            if (SetProperty(ref isQuizInProgress, value))
+            {
+                OnPropertyChanged(nameof(IsQuizIntroVisible));
+            }
+        }
+    }
+
+    public bool IsQuizIntroVisible => !IsQuizInProgress;
+
+    public bool IsQuizSettingsOpen
+    {
+        get => isQuizSettingsOpen;
+        set => SetProperty(ref isQuizSettingsOpen, value);
+    }
+
+    public int QuizQuestionLimit
+    {
+        get => quizQuestionLimit;
+        set
+        {
+            if (SetProperty(ref quizQuestionLimit, Math.Clamp(value, 5, 30)))
+            {
+                OnPropertyChanged(nameof(QuizQuestionLimitText));
+            }
+        }
+    }
+
+    public string QuizQuestionLimitText => $"{QuizQuestionLimit} từ";
+
+    public string PracticeTab
+    {
+        get => practiceTab;
+        set
+        {
+            if (SetProperty(ref practiceTab, value))
+            {
+                OnPropertyChanged(nameof(IsPracticeTab));
+                OnPropertyChanged(nameof(IsPracticeStatsTab));
+            }
+        }
+    }
+
+    public bool IsPracticeTab => PracticeTab == "Practice";
+    public bool IsPracticeStatsTab => PracticeTab == "Stats";
+
+    public string PracticeWordSource
+    {
+        get => practiceWordSource;
+        set
+        {
+            if (SetProperty(ref practiceWordSource, value))
+            {
+                OnPropertyChanged(nameof(IsLearnedPracticeSource));
+                OnPropertyChanged(nameof(IsFavoritePracticeSource));
+                OnPropertyChanged(nameof(IsAllPracticeSource));
+                OnPropertyChanged(nameof(PracticeWordSourceText));
+                OnPropertyChanged(nameof(LearnedPracticeSourceBorder));
+                OnPropertyChanged(nameof(FavoritePracticeSourceBorder));
+                OnPropertyChanged(nameof(AllPracticeSourceBorder));
+            }
+        }
+    }
+
+    public bool IsLearnedPracticeSource => PracticeWordSource == "Learned";
+    public bool IsFavoritePracticeSource => PracticeWordSource == "Favorite";
+    public bool IsAllPracticeSource => PracticeWordSource == "All";
+    public string PracticeWordSourceText => PracticeWordSource switch
+    {
+        "Favorite" => "Từ đã đánh dấu sao",
+        "All" => "Tất cả các từ",
+        _ => "Những từ đã học"
+    };
+    public Brush LearnedPracticeSourceBorder => GetPracticeSourceBorder(IsLearnedPracticeSource);
+    public Brush FavoritePracticeSourceBorder => GetPracticeSourceBorder(IsFavoritePracticeSource);
+    public Brush AllPracticeSourceBorder => GetPracticeSourceBorder(IsAllPracticeSource);
+
     public bool IsDeleteAccountDialogOpen
     {
         get => isDeleteAccountDialogOpen;
@@ -862,7 +970,9 @@ public sealed class MainViewModel : ViewModelBase
             || word.Meaning.Contains(LessonWordSearchText, StringComparison.OrdinalIgnoreCase)
             || word.VietnameseMeaning.Contains(LessonWordSearchText, StringComparison.OrdinalIgnoreCase)
             || word.Type.Contains(LessonWordSearchText, StringComparison.OrdinalIgnoreCase));
-    public QuizQuestion CurrentQuizQuestion => QuizQuestions[CurrentQuizIndex];
+    public QuizQuestion CurrentQuizQuestion => QuizQuestions.Count == 0
+        ? EmptyQuizQuestion
+        : QuizQuestions[Math.Clamp(CurrentQuizIndex, 0, QuizQuestions.Count - 1)];
     public IEnumerable<VocabularyWord> FilteredWords => string.IsNullOrWhiteSpace(SearchText)
         ? Words
         : Words.Where(word => word.Word.Contains(SearchText, StringComparison.OrdinalIgnoreCase)
@@ -903,13 +1013,29 @@ public sealed class MainViewModel : ViewModelBase
         : "Bài học";
     public string StudyProgressText => CurrentStudyWords.Count == 0 ? "0/0" : $"{CurrentWordIndex + 1}/{CurrentStudyWords.Count}";
     public double StudyProgressValue => CurrentStudyWords.Count == 0 ? 0 : ((CurrentWordIndex + 1) / (double)CurrentStudyWords.Count) * 100;
-    public string QuizProgressText => $"CÂU {CurrentQuizIndex + 1}/{QuizQuestions.Count}";
-    public double QuizProgressValue => ((CurrentQuizIndex + 1) / (double)QuizQuestions.Count) * 100;
+    public string QuizProgressText => QuizQuestions.Count == 0 ? "CÂU 0/0" : $"CÂU {CurrentQuizIndex + 1}/{QuizQuestions.Count}";
+    public double QuizProgressValue => QuizQuestions.Count == 0 ? 0 : ((CurrentQuizIndex + 1) / (double)QuizQuestions.Count) * 100;
     public string QuizElapsedTimeText => FormatQuizTime(QuizElapsedTime);
     public string QuizCompletedTimeText => FormatQuizTime(QuizCompletedTime);
     public int AnsweredQuizCount => QuizQuestions.Count(question => question.IsAnswered);
     public bool IsQuizSubmitted => QuizQuestions.Count > 0 && QuizQuestions.All(question => question.IsSubmitted);
     public string IncompleteQuizSubmitText => $"Bạn đã làm {AnsweredQuizCount}/{QuizQuestions.Count} câu. Bạn muốn quay lại làm tiếp hay nộp bài luôn?";
+    public int PracticeTotalWords => Words.Count;
+    public int PracticeReviewedWords => Words.Count(word => word.CorrectQuizCount + word.IncorrectQuizCount > 0);
+    public int PracticeTotalAttempts => Words.Sum(word => word.CorrectQuizCount + word.IncorrectQuizCount);
+    public int PracticeMasteryPercentage => PracticeTotalAttempts == 0
+        ? 0
+        : (int)Math.Round(Words.Sum(word => word.CorrectQuizCount) / (double)PracticeTotalAttempts * 100);
+    public string PracticeMasteryText => PracticeTotalAttempts == 0
+        ? "Chưa có dữ liệu luyện tập"
+        : $"Đúng {Words.Sum(word => word.CorrectQuizCount)}/{PracticeTotalAttempts} lượt trả lời";
+    public string PracticeCoverageText => $"{PracticeReviewedWords}/{PracticeTotalWords} từ đã xuất hiện trong luyện tập";
+    public double PracticeWeakBar => GetPracticeBucketPercentage(0, 0.5);
+    public double PracticeLearningBar => GetPracticeBucketPercentage(0.5, 0.8);
+    public double PracticeGoodBar => GetPracticeBucketPercentage(0.8, 1.0);
+    public double PracticeNewBar => PracticeTotalWords == 0
+        ? 0
+        : Words.Count(word => word.CorrectQuizCount + word.IncorrectQuizCount == 0) / (double)PracticeTotalWords * 100;
     public int WordsDueToday => Words.Count(word => word.NextReviewDate.Date <= DateTime.Today);
     public int MasteredWords => Words.Count(word => word.MasteryLevel >= 5);
     public int StudyStreakDays => CalculateStudyStreakDays();
@@ -954,7 +1080,9 @@ public sealed class MainViewModel : ViewModelBase
     public int TodayGoalPercentage => Math.Min(100, (int)Math.Round(Words.Count(word => word.LastReviewedAt?.Date == DateTime.Today) / 10.0 * 100));
     public string TodayGoalText => $"{Words.Count(word => word.LastReviewedAt?.Date == DateTime.Today)} / 10 từ";
     public IReadOnlyList<int> WeeklyProgressValues => [35, 48, 60, 42, 55, 30, TodayGoalPercentage];
-    public int QuizScorePercentage => (int)Math.Round(QuizQuestions.Count(q => q.IsCorrect) / (double)QuizQuestions.Count * 100);
+    public int QuizScorePercentage => QuizQuestions.Count == 0
+        ? 0
+        : (int)Math.Round(QuizQuestions.Count(q => q.IsCorrect) / (double)QuizQuestions.Count * 100);
     public string QuizScoreText => $"Đúng {QuizQuestions.Count(q => q.IsCorrect)}/{QuizQuestions.Count}";
 
     private void Navigate(string view)
@@ -1000,7 +1128,7 @@ public sealed class MainViewModel : ViewModelBase
 
         if (tab == "Quiz")
         {
-            ResetQuiz();
+            ShowPracticeIntro();
             return;
         }
 
@@ -1854,6 +1982,45 @@ public sealed class MainViewModel : ViewModelBase
         ResetQuiz(lessonQuizWords);
     }
 
+    private void ShowPracticeIntro()
+    {
+        StopQuizTimer();
+        SelectedTab = "Quiz";
+        IsQuizInProgress = false;
+        IsIncompleteQuizSubmitDialogOpen = false;
+        PracticeTab = "Practice";
+        CurrentView = "Quiz";
+        OnPracticeStatsChanged();
+    }
+
+    private void StartPractice()
+    {
+        ResetQuiz(GetPracticeWords());
+    }
+
+    private void SelectPracticeTab(string tab)
+    {
+        PracticeTab = tab == "Stats" ? "Stats" : "Practice";
+    }
+
+    private void SelectPracticeWordSource(string source)
+    {
+        PracticeWordSource = source is "Favorite" or "All" ? source : "Learned";
+    }
+
+    private IEnumerable<VocabularyWord> GetPracticeWords()
+    {
+        var selectedWords = PracticeWordSource switch
+        {
+            "Favorite" => Words.Where(word => word.IsFavorite),
+            "All" => Words,
+            _ => Words.Where(IsLearnedOrRemembered)
+        };
+
+        var list = selectedWords.ToList();
+        return list.Count > 0 ? list : Words;
+    }
+
     private void ReviewCurrentWord(object? parameter)
     {
         if (CurrentStudyWords.Count == 0)
@@ -1943,13 +2110,27 @@ public sealed class MainViewModel : ViewModelBase
         foreach (var question in QuizQuestions)
         {
             question.IsSubmitted = true;
+            if (question.SourceWord is not null)
+            {
+                if (question.IsCorrect)
+                {
+                    question.SourceWord.CorrectQuizCount++;
+                }
+                else
+                {
+                    question.SourceWord.IncorrectQuizCount++;
+                }
+            }
         }
 
         QuizSubmitMessage = "";
         IsIncompleteQuizSubmitDialogOpen = false;
+        IsQuizInProgress = false;
         OnPropertyChanged(nameof(IsQuizSubmitted));
         OnPropertyChanged(nameof(QuizScorePercentage));
         OnPropertyChanged(nameof(QuizScoreText));
+        OnPracticeStatsChanged();
+        SaveAppState();
         CurrentView = "QuizResult";
     }
 
@@ -2316,6 +2497,7 @@ public sealed class MainViewModel : ViewModelBase
         QuizCompletedTime = TimeSpan.Zero;
         QuizSubmitMessage = "";
         IsIncompleteQuizSubmitDialogOpen = false;
+        IsQuizInProgress = true;
         CurrentQuizIndex = 0;
         StartQuizTimer();
         OnPropertyChanged(nameof(AnsweredQuizCount));
@@ -2346,6 +2528,28 @@ public sealed class MainViewModel : ViewModelBase
         return time.TotalHours >= 1
             ? $"{(int)time.TotalHours:00}:{time.Minutes:00}:{time.Seconds:00}"
             : $"{time.Minutes:00}:{time.Seconds:00}";
+    }
+
+    private double GetPracticeBucketPercentage(double minInclusive, double maxExclusive)
+    {
+        if (PracticeTotalWords == 0)
+        {
+            return 0;
+        }
+
+        var count = Words.Count(word =>
+        {
+            var attempts = word.CorrectQuizCount + word.IncorrectQuizCount;
+            if (attempts == 0)
+            {
+                return false;
+            }
+
+            var rate = word.CorrectQuizCount / (double)attempts;
+            return rate >= minInclusive && (rate < maxExclusive || (maxExclusive >= 1.0 && rate <= maxExclusive));
+        });
+
+        return count / (double)PracticeTotalWords * 100;
     }
 
     private static bool IsValidEmail(string value)
@@ -2502,7 +2706,7 @@ public sealed class MainViewModel : ViewModelBase
     private void RefreshQuizQuestions(IEnumerable<VocabularyWord>? sourceWords = null)
     {
         QuizQuestions.Clear();
-        foreach (var question in quizService.CreateQuestions(sourceWords ?? Words))
+        foreach (var question in quizService.CreateQuestions(sourceWords ?? Words, QuizQuestionLimit))
         {
             QuizQuestions.Add(question);
         }
@@ -2744,6 +2948,13 @@ public sealed class MainViewModel : ViewModelBase
         return GetApplicationBrush("PrimaryTextBrush", Brushes.Black);
     }
 
+    private static Brush GetPracticeSourceBorder(bool isSelected)
+    {
+        return isSelected
+            ? GetApplicationBrush("IndigoBrush", new SolidColorBrush(Color.FromRgb(41, 57, 184)))
+            : GetApplicationBrush("BorderBrush", new SolidColorBrush(Color.FromRgb(222, 226, 235)));
+    }
+
     private static Brush GetApplicationBrush(string key, Brush fallback)
     {
         return Application.Current?.Resources[key] as Brush ?? fallback;
@@ -2801,6 +3012,21 @@ public sealed class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(TodayGoalPercentage));
         OnPropertyChanged(nameof(TodayGoalText));
         OnPropertyChanged(nameof(WeeklyProgressValues));
+        OnPracticeStatsChanged();
+    }
+
+    private void OnPracticeStatsChanged()
+    {
+        OnPropertyChanged(nameof(PracticeTotalWords));
+        OnPropertyChanged(nameof(PracticeReviewedWords));
+        OnPropertyChanged(nameof(PracticeTotalAttempts));
+        OnPropertyChanged(nameof(PracticeMasteryPercentage));
+        OnPropertyChanged(nameof(PracticeMasteryText));
+        OnPropertyChanged(nameof(PracticeCoverageText));
+        OnPropertyChanged(nameof(PracticeWeakBar));
+        OnPropertyChanged(nameof(PracticeLearningBar));
+        OnPropertyChanged(nameof(PracticeGoodBar));
+        OnPropertyChanged(nameof(PracticeNewBar));
     }
 
     private void ApplyAccountState(AppState state)

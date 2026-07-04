@@ -1,11 +1,150 @@
 <UserControl x:Class="WordUp.Views.QuizView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <Style x:Key="PracticeSettingsButton" TargetType="Button">
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource IndigoDarkBrush}" />
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root" Background="{TemplateBinding Background}" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource HoverSurfaceBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.82" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="PracticeTabButton" TargetType="Button" BasedOn="{StaticResource TextLinkButton}">
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Border x:Name="Indicator" Width="72" Height="3" CornerRadius="2" Background="{DynamicResource IndigoBrush}" HorizontalAlignment="Center" VerticalAlignment="Bottom" Visibility="Collapsed" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource IndigoDarkBrush}" />
+                                <Setter TargetName="Indicator" Property="Visibility" Value="Visible" />
+                            </DataTrigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource IndigoBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
     <Grid Margin="22,18,22,22">
-        <StackPanel>
+        <StackPanel Visibility="{Binding IsQuizIntroVisible, Converter={StaticResource BoolToVisibility}}">
             <Grid>
-                <Button Content="x" Style="{StaticResource IconButton}" HorizontalAlignment="Left" Command="{Binding SelectTabCommand}" CommandParameter="Study" />
-                <TextBlock Text="Kiểm tra" Style="{StaticResource PageTitleText}" FontSize="21" HorizontalAlignment="Center" />
+                <Button Content="x" Style="{StaticResource IconButton}" HorizontalAlignment="Left" Command="{Binding SelectTabCommand}" CommandParameter="Dashboard" />
+                <TextBlock Text="Luyện tập" Style="{StaticResource PageTitleText}" FontSize="21" HorizontalAlignment="Center" />
+            </Grid>
+
+            <Grid Width="230" HorizontalAlignment="Center" Margin="0,18,0,16">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="38" />
+                    <RowDefinition Height="4" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition />
+                </Grid.ColumnDefinitions>
+                <Button Content="Luyện tập" Style="{StaticResource PracticeTabButton}" Tag="{Binding IsPracticeTab}" Command="{Binding SelectPracticeTabCommand}" CommandParameter="Practice" />
+                <Button Grid.Column="1" Content="Thống kê" Style="{StaticResource PracticeTabButton}" Tag="{Binding IsPracticeStatsTab}" Command="{Binding SelectPracticeTabCommand}" CommandParameter="Stats" />
+                <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{DynamicResource BorderBrush}" Height="1" VerticalAlignment="Top" />
+            </Grid>
+
+            <Border Style="{StaticResource Card}" Padding="16" Visibility="{Binding IsPracticeTab, Converter={StaticResource BoolToVisibility}}">
+                <Grid>
+                    <StackPanel Margin="0,8,0,0" Panel.ZIndex="0">
+                        <TextBlock Text="Ôn tập toàn bộ từ vựng" Style="{StaticResource SectionTitleText}" TextAlignment="Center" Margin="0,0,0,8" />
+                        <TextBlock Text="Bạn sẽ luyện tập các từ đã học trong tất cả bài học. WordUp sẽ trộn câu hỏi để kiểm tra mức độ ghi nhớ, phát hiện những từ còn yếu và theo dõi tiến bộ sau mỗi lần luyện tập." Style="{StaticResource MutedText}" FontSize="13" TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,18" />
+                        <Button Content="Bắt đầu" Style="{StaticResource PrimaryButton}" Command="{Binding StartPracticeCommand}" />
+                    </StackPanel>
+                    <Button Content="⚙" Style="{StaticResource PracticeSettingsButton}" HorizontalAlignment="Right" VerticalAlignment="Top" Panel.ZIndex="2" Command="{Binding ToggleQuizSettingsCommand}" />
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource Card}" Padding="16" Visibility="{Binding IsPracticeStatsTab, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel>
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Tỷ lệ thuộc từ" FontWeight="Bold" />
+                            <TextBlock Text="{Binding PracticeMasteryText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding PracticeCoverageText}" Style="{StaticResource MutedText}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding PracticeMasteryPercentage, StringFormat={}{0}%}" Foreground="{DynamicResource IndigoDarkBrush}" FontSize="30" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                    </Grid>
+                    <ProgressBar Value="{Binding PracticeMasteryPercentage, Mode=OneWay}" Maximum="100" Height="8" Foreground="{DynamicResource IndigoBrush}" Margin="0,0,0,18" />
+
+                    <TextBlock Text="Biểu đồ phân bố ghi nhớ" FontWeight="SemiBold" Margin="0,0,0,10" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                            <ColumnDefinition />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Margin="0,0,5,0">
+                            <TextBlock Text="{Binding PracticeNewBar, StringFormat={}{0:0}%}" FontWeight="SemiBold" TextAlignment="Center" Margin="0,0,0,4" />
+                            <ProgressBar Value="{Binding PracticeNewBar, Mode=OneWay}" Maximum="100" Width="22" Height="82" HorizontalAlignment="Center" Orientation="Vertical" Foreground="{DynamicResource BorderBrush}" />
+                            <TextBlock Text="Mới" Style="{StaticResource MutedText}" TextAlignment="Center" Margin="0,6,0,0" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="5,0">
+                            <TextBlock Text="{Binding PracticeWeakBar, StringFormat={}{0:0}%}" FontWeight="SemiBold" TextAlignment="Center" Margin="0,0,0,4" />
+                            <ProgressBar Value="{Binding PracticeWeakBar, Mode=OneWay}" Maximum="100" Width="22" Height="82" HorizontalAlignment="Center" Orientation="Vertical" Foreground="{DynamicResource DangerBrush}" />
+                            <TextBlock Text="Yếu" Style="{StaticResource MutedText}" TextAlignment="Center" Margin="0,6,0,0" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Margin="5,0">
+                            <TextBlock Text="{Binding PracticeLearningBar, StringFormat={}{0:0}%}" FontWeight="SemiBold" TextAlignment="Center" Margin="0,0,0,4" />
+                            <ProgressBar Value="{Binding PracticeLearningBar, Mode=OneWay}" Maximum="100" Width="22" Height="82" HorizontalAlignment="Center" Orientation="Vertical" Foreground="#E0A12F" />
+                            <TextBlock Text="Đang nhớ" Style="{StaticResource MutedText}" TextAlignment="Center" Margin="0,6,0,0" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="3" Margin="5,0,0,0">
+                            <TextBlock Text="{Binding PracticeGoodBar, StringFormat={}{0:0}%}" FontWeight="SemiBold" TextAlignment="Center" Margin="0,0,0,4" />
+                            <ProgressBar Value="{Binding PracticeGoodBar, Mode=OneWay}" Maximum="100" Width="22" Height="82" HorizontalAlignment="Center" Orientation="Vertical" Foreground="{DynamicResource SuccessBrush}" />
+                            <TextBlock Text="Tốt" Style="{StaticResource MutedText}" TextAlignment="Center" Margin="0,6,0,0" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <StackPanel Visibility="{Binding IsQuizInProgress, Converter={StaticResource BoolToVisibility}}">
+            <Grid>
+                <Button Content="x" Style="{StaticResource IconButton}" HorizontalAlignment="Left" Command="{Binding SelectTabCommand}" CommandParameter="Quiz" />
+                <TextBlock Text="Làm bài luyện tập" Style="{StaticResource PageTitleText}" FontSize="21" HorizontalAlignment="Center" />
                 <Button Content="Nộp" Style="{StaticResource PrimaryButton}" Width="76" Height="36" Padding="12,0" HorizontalAlignment="Right" Command="{Binding SubmitQuizCommand}" />
             </Grid>
 
@@ -13,7 +152,7 @@
                 <TextBlock Text="{Binding QuizProgressText}" Style="{StaticResource MutedText}" HorizontalAlignment="Left" />
                 <TextBlock Text="{Binding QuizElapsedTimeText}" Style="{StaticResource MutedText}" FontWeight="SemiBold" HorizontalAlignment="Right" />
             </Grid>
-            <ProgressBar Value="{Binding QuizProgressValue, Mode=OneWay}" Maximum="100" Height="7" Foreground="{StaticResource IndigoBrush}" />
+            <ProgressBar Value="{Binding QuizProgressValue, Mode=OneWay}" Maximum="100" Height="7" Foreground="{DynamicResource IndigoBrush}" />
 
             <Border Style="{StaticResource Card}" Height="190" Margin="0,24,0,18">
                 <StackPanel VerticalAlignment="Center">
@@ -32,6 +171,26 @@
                 <Button Content="&gt;" Style="{StaticResource OutlineButton}" FontSize="20" Margin="6,0,0,0" Command="{Binding NextQuizCommand}" />
             </UniformGrid>
         </StackPanel>
+
+        <Border Visibility="{Binding IsQuizSettingsOpen, Converter={StaticResource BoolToVisibility}}" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <Border Style="{StaticResource Card}" Padding="18" Width="340" MaxWidth="340">
+                <StackPanel>
+                    <TextBlock Text="Cài đặt bài luyện tập" Style="{StaticResource SectionTitleText}" TextAlignment="Center" Margin="0,0,0,14" />
+
+                    <Grid Margin="0,0,0,8">
+                        <TextBlock Text="Số từ" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    </Grid>
+                    <TextBox Style="{StaticResource TextInput}" Text="{Binding QuizQuestionLimit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center" Margin="0,0,0,16" />
+
+                    <TextBlock Text="Nguồn từ luyện tập" FontWeight="SemiBold" Margin="0,0,0,8" />
+                    <Button Content="Những từ đã học" Style="{StaticResource OutlineButton}" BorderBrush="{Binding LearnedPracticeSourceBorder}" HorizontalContentAlignment="Left" Margin="0,0,0,8" Command="{Binding SelectPracticeWordSourceCommand}" CommandParameter="Learned" />
+                    <Button Content="Từ đã đánh dấu sao" Style="{StaticResource OutlineButton}" BorderBrush="{Binding FavoritePracticeSourceBorder}" HorizontalContentAlignment="Left" Margin="0,0,0,8" Command="{Binding SelectPracticeWordSourceCommand}" CommandParameter="Favorite" />
+                    <Button Content="Tất cả các từ" Style="{StaticResource OutlineButton}" BorderBrush="{Binding AllPracticeSourceBorder}" HorizontalContentAlignment="Left" Margin="0,0,0,16" Command="{Binding SelectPracticeWordSourceCommand}" CommandParameter="All" />
+
+                    <Button Content="Xong" Style="{StaticResource PrimaryButton}" Width="80" Height="34" HorizontalAlignment="Center" Command="{Binding CloseQuizSettingsCommand}" />
+                </StackPanel>
+            </Border>
+        </Border>
 
         <Border Visibility="{Binding IsIncompleteQuizSubmitDialogOpen, Converter={StaticResource BoolToVisibility}}">
             <Border Style="{StaticResource Card}" Padding="18" Width="340" MaxWidth="340" HorizontalAlignment="Center" VerticalAlignment="Center">

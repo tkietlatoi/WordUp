@@ -4,26 +4,91 @@
     <StackPanel Margin="22,18,22,22">
         <Grid>
             <Button Content="x" Style="{StaticResource IconButton}" HorizontalAlignment="Left" Command="{Binding NavigateCommand}" CommandParameter="Account" />
-            <TextBlock Text="Về chúng tôi" Style="{StaticResource PageTitleText}" FontSize="21" HorizontalAlignment="Center" />
+            <TextBlock Text="Giới thiệu chung" Style="{StaticResource PageTitleText}" FontSize="21" HorizontalAlignment="Center" />
         </Grid>
+
         <Border Style="{StaticResource Card}" Margin="0,22,0,14">
             <StackPanel>
-                <TextBlock Text="WordUp" FontSize="24" FontWeight="Bold" TextAlignment="Center" />
-                <TextBlock Text="Nền tảng học từ vựng tiếng Anh được thiết kế cho việc học tập trung, hiệu quả và cá nhân hóa." TextAlignment="Center" Margin="0,12,0,0" />
+                <Border Width="74" Height="74" CornerRadius="14" Background="{DynamicResource HoverSurfaceBrush}" HorizontalAlignment="Center" Margin="0,4,0,14">
+                    <TextBlock Text="WU" FontSize="24" FontWeight="Bold" Foreground="{DynamicResource IndigoBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+                <TextBlock Text="WordUp" Style="{StaticResource PageTitleText}" TextAlignment="Center" />
+                <TextBlock Text="Ứng dụng học từ vựng tiếng Anh hỗ trợ tạo bài học, luyện flashcard, kiểm tra kiến thức và theo dõi tiến độ học tập cá nhân." TextAlignment="Center" Margin="0,12,0,0" />
             </StackPanel>
         </Border>
-        <TextBlock Text="ĐỘI NGŨ PHÁT TRIỂN" Style="{StaticResource MutedText}" TextAlignment="Center" Margin="0,4,0,16" />
+
+        <TextBlock Text="THÀNH VIÊN NHÓM" Style="{StaticResource MutedText}" TextAlignment="Center" Margin="0,4,0,16" />
+
         <Border Style="{StaticResource Card}">
-            <StackPanel HorizontalAlignment="Center">
-                <TextBlock Text="Nguyễn Văn A" FontWeight="Bold" TextAlignment="Center" />
-                <TextBlock Text="Trưởng nhóm / Backend" Style="{StaticResource MutedText}" TextAlignment="Center" />
-            </StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="58" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid Width="48" Height="48" HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <Ellipse Fill="#5F74DC" />
+                    <TextBlock Text="K" Foreground="White" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="Vũ Hải Khoa" FontWeight="Bold" FontSize="16" />
+                    <TextBlock Text="23012825" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
+                    <TextBlock Text="Nhóm trưởng" Foreground="{DynamicResource IndigoDarkBrush}" FontWeight="SemiBold" Margin="0,3,0,0" />
+                </StackPanel>
+            </Grid>
         </Border>
+
         <Border Style="{StaticResource Card}">
-            <StackPanel HorizontalAlignment="Center">
-                <TextBlock Text="Trần Thị B" FontWeight="Bold" TextAlignment="Center" />
-                <TextBlock Text="UI/UX Designer" Style="{StaticResource MutedText}" TextAlignment="Center" />
-            </StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="58" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid Width="48" Height="48" HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <Ellipse Fill="#34B77D" />
+                    <TextBlock Text="K" Foreground="White" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="Hoàng Tuấn Kiệt" FontWeight="Bold" FontSize="16" />
+                    <TextBlock Text="23010517" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
+                    <TextBlock Text="Thành viên" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Style="{StaticResource Card}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="58" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid Width="48" Height="48" HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <Ellipse Fill="#E0A12F" />
+                    <TextBlock Text="L" Foreground="#111322" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="Đỗ Tùng Lâm" FontWeight="Bold" FontSize="16" />
+                    <TextBlock Text="23010874" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
+                    <TextBlock Text="Thành viên" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Border Style="{StaticResource Card}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="58" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid Width="48" Height="48" HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <Ellipse Fill="#E05A66" />
+                    <TextBlock Text="L" Foreground="White" FontSize="18" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="Ngô Vương Linh" FontWeight="Bold" FontSize="16" />
+                    <TextBlock Text="23010496" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
+                    <TextBlock Text="Thành viên" Style="{StaticResource MutedText}" Margin="0,3,0,0" />
+                </StackPanel>
+            </Grid>
         </Border>
     </StackPanel>
 </UserControl>

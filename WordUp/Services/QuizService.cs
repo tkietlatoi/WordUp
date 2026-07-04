@@ -12,11 +12,11 @@ public sealed class QuizService
         "Một thành ngữ mang nghĩa bóng."
     ];
 
-    public IReadOnlyList<QuizQuestion> CreateQuestions(IEnumerable<VocabularyWord> words)
+    public IReadOnlyList<QuizQuestion> CreateQuestions(IEnumerable<VocabularyWord> words, int questionLimit = 10)
     {
         var wordList = words
             .Where(word => !string.IsNullOrWhiteSpace(word.Word) && !string.IsNullOrWhiteSpace(word.Meaning))
-            .Take(10)
+            .Take(Math.Clamp(questionLimit, 5, 30))
             .ToList();
 
         if (wordList.Count == 0)
@@ -33,7 +33,10 @@ public sealed class QuizService
             ];
         }
 
-        return wordList.Select((word, index) => CreateQuestion(word, wordList, index)).ToList();
+        return wordList
+            .OrderBy(_ => Random.Shared.Next())
+            .Select((word, index) => CreateQuestion(word, wordList, index))
+            .ToList();
     }
 
     private static QuizQuestion CreateQuestion(VocabularyWord word, IReadOnlyList<VocabularyWord> allWords, int index)
@@ -61,16 +64,16 @@ public sealed class QuizService
 
         var choices = new List<string> { word.Meaning };
         choices.AddRange(distractors.Take(3));
-
-        var correctIndex = index % 4;
-        (choices[0], choices[correctIndex]) = (choices[correctIndex], choices[0]);
+        choices = choices.OrderBy(_ => Random.Shared.Next()).ToList();
+        var correctIndex = choices.IndexOf(word.Meaning);
 
         return new QuizQuestion
         {
             Term = word.Word,
             Prompt = "Chọn định nghĩa chính xác nhất cho từ phía trên.",
             Choices = choices,
-            CorrectIndex = correctIndex
+            CorrectIndex = correctIndex,
+            SourceWord = word
         };
     }
 }

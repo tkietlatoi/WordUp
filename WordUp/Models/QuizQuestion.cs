@@ -24,6 +24,7 @@ public sealed class QuizQuestion : INotifyPropertyChanged
     public string Prompt { get; init; } = "";
     public IReadOnlyList<string> Choices { get; init; } = Array.Empty<string>();
     public int CorrectIndex { get; init; }
+    public VocabularyWord? SourceWord { get; init; }
 
     public int SelectedIndex
     {
