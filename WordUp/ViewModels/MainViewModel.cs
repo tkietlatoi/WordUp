@@ -43,6 +43,7 @@ public sealed class MainViewModel : ViewModelBase
     private string lessonSearchText = "";
     private Deck? selectedStudyDeck;
     private Deck? editingLesson;
+    private Deck? pendingDeleteLesson;
     private string newLessonName = "";
     private string newLessonWord = "";
     private string newLessonIpa = "";
@@ -116,6 +117,8 @@ public sealed class MainViewModel : ViewModelBase
         AddLessonCommand = new RelayCommand(_ => OpenAddLesson());
         EditLessonCommand = new RelayCommand(parameter => EditLesson(parameter));
         DeleteLessonCommand = new RelayCommand(parameter => DeleteLesson(parameter));
+        CancelDeleteLessonCommand = new RelayCommand(_ => CancelDeleteLesson());
+        ConfirmDeleteLessonCommand = new RelayCommand(_ => ConfirmDeleteLesson());
         EditLessonWordCommand = new RelayCommand(parameter => EditLessonWord(parameter));
         DeleteLessonWordCommand = new RelayCommand(parameter => DeleteLessonWord(parameter));
         AddLessonWordCommand = new RelayCommand(_ => AddLessonWord());
@@ -186,6 +189,8 @@ public sealed class MainViewModel : ViewModelBase
     public ICommand AddLessonCommand { get; }
     public ICommand EditLessonCommand { get; }
     public ICommand DeleteLessonCommand { get; }
+    public ICommand CancelDeleteLessonCommand { get; }
+    public ICommand ConfirmDeleteLessonCommand { get; }
     public ICommand EditLessonWordCommand { get; }
     public ICommand DeleteLessonWordCommand { get; }
     public ICommand AddLessonWordCommand { get; }
@@ -615,6 +620,12 @@ public sealed class MainViewModel : ViewModelBase
             }
         }
     }
+
+    public bool IsDeleteLessonDialogOpen => pendingDeleteLesson is not null;
+    public string DeleteLessonDialogTitle => pendingDeleteLesson is null ? "Xóa bài học" : $"Xóa \"{pendingDeleteLesson.Name}\"?";
+    public string DeleteLessonDialogMessage => pendingDeleteLesson is null
+        ? ""
+        : $"Bài học này có {pendingDeleteLesson.TotalWords} từ. Sau khi xóa, các từ trong bài cũng sẽ bị xóa khỏi hệ thống.";
 
     public string NewLessonName
     {
@@ -1054,16 +1065,26 @@ public sealed class MainViewModel : ViewModelBase
             return;
         }
 
-        var result = MessageBox.Show(
-            $"Bạn có chắc muốn xóa bài học \"{lesson.Name}\" không?",
-            "Xác nhận xóa bài học",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
+        pendingDeleteLesson = lesson;
+        OnDeleteLessonDialogChanged();
+    }
 
-        if (result != MessageBoxResult.Yes)
+    private void CancelDeleteLesson()
+    {
+        pendingDeleteLesson = null;
+        OnDeleteLessonDialogChanged();
+    }
+
+    private void ConfirmDeleteLesson()
+    {
+        var lesson = pendingDeleteLesson;
+        if (lesson is null)
         {
             return;
         }
+
+        pendingDeleteLesson = null;
+        OnDeleteLessonDialogChanged();
 
         Decks.Remove(lesson);
         foreach (var word in Words.Where(word => word.LessonId == lesson.Id).ToList())
@@ -1087,6 +1108,13 @@ public sealed class MainViewModel : ViewModelBase
         OnProgressChanged();
         RefreshQuizQuestions();
         SaveAppState();
+    }
+
+    private void OnDeleteLessonDialogChanged()
+    {
+        OnPropertyChanged(nameof(IsDeleteLessonDialogOpen));
+        OnPropertyChanged(nameof(DeleteLessonDialogTitle));
+        OnPropertyChanged(nameof(DeleteLessonDialogMessage));
     }
 
     private void DeleteLessonWord(object? parameter)
