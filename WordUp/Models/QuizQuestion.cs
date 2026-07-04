@@ -8,11 +8,15 @@ public sealed class QuizQuestion : INotifyPropertyChanged
     private static readonly Brush DefaultBackground = Brushes.White;
     private static readonly Brush DefaultBorder = new SolidColorBrush(Color.FromRgb(116, 89, 217));
     private static readonly Brush MutedBorder = new SolidColorBrush(Color.FromRgb(222, 226, 235));
+    private static readonly Brush SelectedBackground = new SolidColorBrush(Color.FromRgb(240, 238, 250));
     private static readonly Brush CorrectBackground = new SolidColorBrush(Color.FromRgb(226, 247, 235));
     private static readonly Brush CorrectBorder = new SolidColorBrush(Color.FromRgb(37, 150, 90));
     private static readonly Brush WrongBackground = new SolidColorBrush(Color.FromRgb(253, 229, 232));
     private static readonly Brush WrongBorder = new SolidColorBrush(Color.FromRgb(200, 32, 47));
+    private static readonly Brush SuccessText = new SolidColorBrush(Color.FromRgb(34, 160, 107));
+    private static readonly Brush DangerText = new SolidColorBrush(Color.FromRgb(200, 32, 47));
     private int selectedIndex = -1;
+    private bool isSubmitted;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -34,9 +38,13 @@ public sealed class QuizQuestion : INotifyPropertyChanged
             selectedIndex = value;
             OnPropertyChanged(nameof(SelectedIndex));
             OnPropertyChanged(nameof(IsCorrect));
+            OnPropertyChanged(nameof(IsAnswered));
             OnPropertyChanged(nameof(StatusSymbol));
             OnPropertyChanged(nameof(StatusText));
+            OnPropertyChanged(nameof(StatusBrush));
             OnPropertyChanged(nameof(SelectedChoice));
+            OnPropertyChanged(nameof(SelectedChoiceBrush));
+            OnPropertyChanged(nameof(ShowCorrectChoice));
             OnPropertyChanged(nameof(CanSelectAnswer));
             OnPropertyChanged(nameof(ChoiceABackground));
             OnPropertyChanged(nameof(ChoiceBBackground));
@@ -49,12 +57,46 @@ public sealed class QuizQuestion : INotifyPropertyChanged
         }
     }
 
-    public bool CanSelectAnswer => SelectedIndex < 0;
-    public bool IsCorrect => SelectedIndex == CorrectIndex;
-    public string StatusSymbol => IsCorrect ? "OK" : "X";
-    public string StatusText => IsCorrect ? "Correct" : "Needs review";
+    public bool IsSubmitted
+    {
+        get => isSubmitted;
+        set
+        {
+            if (isSubmitted == value)
+            {
+                return;
+            }
+
+            isSubmitted = value;
+            OnPropertyChanged(nameof(IsSubmitted));
+            OnPropertyChanged(nameof(CanSelectAnswer));
+            OnPropertyChanged(nameof(IsCorrect));
+            OnPropertyChanged(nameof(StatusSymbol));
+            OnPropertyChanged(nameof(StatusText));
+            OnPropertyChanged(nameof(StatusBrush));
+            OnPropertyChanged(nameof(SelectedChoiceBrush));
+            OnPropertyChanged(nameof(ShowCorrectChoice));
+            OnPropertyChanged(nameof(ChoiceABackground));
+            OnPropertyChanged(nameof(ChoiceBBackground));
+            OnPropertyChanged(nameof(ChoiceCBackground));
+            OnPropertyChanged(nameof(ChoiceDBackground));
+            OnPropertyChanged(nameof(ChoiceABorder));
+            OnPropertyChanged(nameof(ChoiceBBorder));
+            OnPropertyChanged(nameof(ChoiceCBorder));
+            OnPropertyChanged(nameof(ChoiceDBorder));
+        }
+    }
+
+    public bool CanSelectAnswer => !IsSubmitted;
+    public bool IsAnswered => SelectedIndex >= 0;
+    public bool IsCorrect => IsSubmitted && SelectedIndex == CorrectIndex;
+    public string StatusSymbol => !IsSubmitted ? "" : IsCorrect ? "✓" : "X";
+    public string StatusText => !IsSubmitted ? "Chưa nộp" : IsCorrect ? "Đúng" : "Cần xem lại";
+    public Brush StatusBrush => IsCorrect ? SuccessText : DangerText;
     public string CorrectChoice => Choices.Count > CorrectIndex ? Choices[CorrectIndex] : "";
-    public string SelectedChoice => Choices.Count > SelectedIndex && SelectedIndex >= 0 ? Choices[SelectedIndex] : "No answer";
+    public string SelectedChoice => Choices.Count > SelectedIndex && SelectedIndex >= 0 ? Choices[SelectedIndex] : "Chưa chọn";
+    public Brush SelectedChoiceBrush => !IsSubmitted ? DefaultBorder : IsCorrect ? SuccessText : DangerText;
+    public bool ShowCorrectChoice => IsSubmitted && !IsCorrect;
     public Brush ChoiceABackground => GetChoiceBackground(0);
     public Brush ChoiceBBackground => GetChoiceBackground(1);
     public Brush ChoiceCBackground => GetChoiceBackground(2);
@@ -69,6 +111,11 @@ public sealed class QuizQuestion : INotifyPropertyChanged
         if (SelectedIndex < 0)
         {
             return DefaultBackground;
+        }
+
+        if (!IsSubmitted)
+        {
+            return index == SelectedIndex ? SelectedBackground : DefaultBackground;
         }
 
         if (index == CorrectIndex)
@@ -89,6 +136,11 @@ public sealed class QuizQuestion : INotifyPropertyChanged
         if (SelectedIndex < 0)
         {
             return DefaultBorder;
+        }
+
+        if (!IsSubmitted)
+        {
+            return index == SelectedIndex ? DefaultBorder : MutedBorder;
         }
 
         if (index == CorrectIndex)

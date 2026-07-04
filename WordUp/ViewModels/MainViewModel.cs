@@ -21,6 +21,7 @@ public sealed class MainViewModel : ViewModelBase
     private readonly QuizService quizService = new();
     private readonly PronunciationService pronunciationService = new();
     private readonly DispatcherTimer studyAutoTimer;
+    private readonly DispatcherTimer quizTimer;
     private object? speechVoice;
     private CancellationTokenSource? newLessonIpaLookupCancellation;
     private CancellationTokenSource? editorIpaLookupCancellation;
@@ -34,6 +35,10 @@ public sealed class MainViewModel : ViewModelBase
     private bool isLessonCompleteDialogOpen;
     private int currentWordIndex;
     private int currentQuizIndex;
+    private TimeSpan quizElapsedTime = TimeSpan.Zero;
+    private TimeSpan quizCompletedTime = TimeSpan.Zero;
+    private string quizSubmitMessage = "";
+    private bool isIncompleteQuizSubmitDialogOpen;
     private string selectedTab = "Dashboard";
     private string lessonSearchText = "";
     private Deck? selectedStudyDeck;
@@ -127,7 +132,11 @@ public sealed class MainViewModel : ViewModelBase
         BackToLessonsFromCompleteCommand = new RelayCommand(_ => BackToLessonsFromComplete());
         StartQuizFromLessonCommand = new RelayCommand(_ => StartQuizFromLesson());
         SelectQuizAnswerCommand = new RelayCommand(parameter => SelectQuizAnswer(parameter));
+        PreviousQuizCommand = new RelayCommand(_ => PreviousQuiz());
         NextQuizCommand = new RelayCommand(_ => NextQuiz());
+        SubmitQuizCommand = new RelayCommand(_ => SubmitQuiz());
+        ContinueQuizCommand = new RelayCommand(_ => IsIncompleteQuizSubmitDialogOpen = false);
+        ForceSubmitQuizCommand = new RelayCommand(_ => CompleteQuizSubmission());
         NewWordCommand = new RelayCommand(_ => ClearWordEditor());
         SaveWordCommand = new RelayCommand(_ => SaveWord());
         DeleteWordCommand = new RelayCommand(_ => DeleteSelectedWord());
@@ -149,6 +158,15 @@ public sealed class MainViewModel : ViewModelBase
             Interval = TimeSpan.FromSeconds(3)
         };
         studyAutoTimer.Tick += (_, _) => AdvanceStudyAuto();
+
+        quizTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(1)
+        };
+        quizTimer.Tick += (_, _) =>
+        {
+            QuizElapsedTime = QuizElapsedTime.Add(TimeSpan.FromSeconds(1));
+        };
 
         LoadProfileEditor();
         RefreshTodayWord();
@@ -184,7 +202,11 @@ public sealed class MainViewModel : ViewModelBase
     public ICommand BackToLessonsFromCompleteCommand { get; }
     public ICommand StartQuizFromLessonCommand { get; }
     public ICommand SelectQuizAnswerCommand { get; }
+    public ICommand PreviousQuizCommand { get; }
     public ICommand NextQuizCommand { get; }
+    public ICommand SubmitQuizCommand { get; }
+    public ICommand ContinueQuizCommand { get; }
+    public ICommand ForceSubmitQuizCommand { get; }
     public ICommand NewWordCommand { get; }
     public ICommand SaveWordCommand { get; }
     public ICommand DeleteWordCommand { get; }
@@ -206,6 +228,11 @@ public sealed class MainViewModel : ViewModelBase
         get => currentView;
         set
         {
+            if (value is not "Quiz" and not "QuizResult")
+            {
+                StopQuizTimer();
+            }
+
             if (SetProperty(ref currentView, value))
             {
                 OnPropertyChanged(nameof(IsLoginView));
@@ -698,6 +725,42 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
+    public TimeSpan QuizElapsedTime
+    {
+        get => quizElapsedTime;
+        set
+        {
+            if (SetProperty(ref quizElapsedTime, value))
+            {
+                OnPropertyChanged(nameof(QuizElapsedTimeText));
+            }
+        }
+    }
+
+    public TimeSpan QuizCompletedTime
+    {
+        get => quizCompletedTime;
+        set
+        {
+            if (SetProperty(ref quizCompletedTime, value))
+            {
+                OnPropertyChanged(nameof(QuizCompletedTimeText));
+            }
+        }
+    }
+
+    public string QuizSubmitMessage
+    {
+        get => quizSubmitMessage;
+        set => SetProperty(ref quizSubmitMessage, value);
+    }
+
+    public bool IsIncompleteQuizSubmitDialogOpen
+    {
+        get => isIncompleteQuizSubmitDialogOpen;
+        set => SetProperty(ref isIncompleteQuizSubmitDialogOpen, value);
+    }
+
     public IReadOnlyList<VocabularyWord> CurrentStudyWords
     {
         get
@@ -768,6 +831,11 @@ public sealed class MainViewModel : ViewModelBase
     public double StudyProgressValue => CurrentStudyWords.Count == 0 ? 0 : ((CurrentWordIndex + 1) / (double)CurrentStudyWords.Count) * 100;
     public string QuizProgressText => $"CÂU {CurrentQuizIndex + 1}/{QuizQuestions.Count}";
     public double QuizProgressValue => ((CurrentQuizIndex + 1) / (double)QuizQuestions.Count) * 100;
+    public string QuizElapsedTimeText => FormatQuizTime(QuizElapsedTime);
+    public string QuizCompletedTimeText => FormatQuizTime(QuizCompletedTime);
+    public int AnsweredQuizCount => QuizQuestions.Count(question => question.IsAnswered);
+    public bool IsQuizSubmitted => QuizQuestions.Count > 0 && QuizQuestions.All(question => question.IsSubmitted);
+    public string IncompleteQuizSubmitText => $"Bạn đã làm {AnsweredQuizCount}/{QuizQuestions.Count} câu. Bạn muốn quay lại làm tiếp hay nộp bài luôn?";
     public int WordsDueToday => Words.Count(word => word.NextReviewDate.Date <= DateTime.Today);
     public int MasteredWords => Words.Count(word => word.MasteryLevel >= 5);
     public int StudyStreakDays => CalculateStudyStreakDays();
@@ -850,6 +918,12 @@ public sealed class MainViewModel : ViewModelBase
         if (tab == "Study")
         {
             ShowLessonList();
+        }
+
+        if (tab == "Quiz")
+        {
+            ResetQuiz();
+            return;
         }
 
         CurrentView = tab;
@@ -1169,7 +1243,7 @@ public sealed class MainViewModel : ViewModelBase
 
         OnPropertyChanged(nameof(FilteredNewLessonWords));
         NewLessonMessage = importedWords.Count == 0
-            ? "Không tìm thấy dòng hợp lệ. Mỗi dòng nên có: từ, nghĩa, loại từ."
+            ? "Không tìm thấy dòng hợp lệ. Mỗi dòng cần ít nhất: từ, nghĩa. Ví dụ: apple, quả táo."
             : $"Đã nhập {importedWords.Count} từ từ tệp.";
     }
 
@@ -1195,7 +1269,7 @@ public sealed class MainViewModel : ViewModelBase
 
         if (filledCount > 0)
         {
-            NewLessonMessage = $"ÄĂ£ tá»± Ä‘iá»n IPA cho {filledCount} tá»«.";
+            NewLessonMessage = $"Đã tự điền IPA cho {filledCount} từ.";
         }
     }
 
@@ -1348,6 +1422,12 @@ public sealed class MainViewModel : ViewModelBase
         try
         {
             var extension = Path.GetExtension(path).ToLowerInvariant();
+            if (extension == ".doc")
+            {
+                NewLessonMessage = "Ứng dụng chỉ đọc được Word dạng .docx. Hãy mở file trong Word rồi Save As thành .docx.";
+                return [];
+            }
+
             var rows = extension switch
             {
                 ".txt" or ".csv" => File.ReadAllLines(path),
@@ -1376,12 +1456,18 @@ public sealed class MainViewModel : ViewModelBase
             return null;
         }
 
-        var parts = row
+        var normalizedRow = row.Trim();
+        var parts = normalizedRow
             .Split(['\t', '|', ';', ','], StringSplitOptions.TrimEntries)
             .Where(part => !string.IsNullOrWhiteSpace(part))
             .ToArray();
 
         if (parts.Length < 2)
+        {
+            parts = SplitLooseVocabularyRow(normalizedRow);
+        }
+
+        if (parts.Length < 2 || IsVocabularyHeader(parts))
         {
             return null;
         }
@@ -1408,6 +1494,50 @@ public sealed class MainViewModel : ViewModelBase
         return trimmed.Length >= 2
             && ((trimmed.StartsWith('/') && trimmed.EndsWith('/'))
                 || (trimmed.StartsWith('[') && trimmed.EndsWith(']')));
+    }
+
+    private static string[] SplitLooseVocabularyRow(string row)
+    {
+        foreach (var separator in new[] { " - ", " – ", " — " })
+        {
+            var parts = row
+                .Split(separator, StringSplitOptions.TrimEntries)
+                .Where(part => !string.IsNullOrWhiteSpace(part))
+                .ToArray();
+
+            if (parts.Length >= 2)
+            {
+                return parts;
+            }
+        }
+
+        foreach (var separator in new[] { ": " })
+        {
+            var index = row.IndexOf(separator, StringComparison.Ordinal);
+            if (index > 0 && index + separator.Length < row.Length)
+            {
+                return
+                [
+                    row[..index].Trim(),
+                    row[(index + separator.Length)..].Trim()
+                ];
+            }
+        }
+
+        return [];
+    }
+
+    private static bool IsVocabularyHeader(IReadOnlyList<string> parts)
+    {
+        var first = parts[0].Trim();
+        var second = parts[1].Trim();
+        return IsHeaderName(first, "word", "từ", "tu", "vocab", "vocabulary")
+            && IsHeaderName(second, "meaning", "nghĩa", "nghia", "definition", "translation");
+    }
+
+    private static bool IsHeaderName(string value, params string[] names)
+    {
+        return names.Any(name => string.Equals(value, name, StringComparison.OrdinalIgnoreCase));
     }
 
     private static IReadOnlyList<string> ReadDocxRows(string path)
@@ -1606,13 +1736,23 @@ public sealed class MainViewModel : ViewModelBase
 
     private void StartQuizFromLesson()
     {
+        if (!RequireAuthentication("Quiz"))
+        {
+            return;
+        }
+
         StopStudyAuto();
         IsLessonCompleteDialogOpen = false;
         IsStudyFlashcardOpen = false;
         IsAddLessonOpen = false;
         IsFlashcardBackVisible = false;
         SelectedTab = "Quiz";
-        ResetQuiz();
+
+        var lessonQuizWords = SelectedStudyDeck is null
+            ? CurrentStudyWords
+            : Words.Where(word => word.LessonId == SelectedStudyDeck.Id).ToList();
+
+        ResetQuiz(lessonQuizWords);
     }
 
     private void ReviewCurrentWord(object? parameter)
@@ -1633,7 +1773,7 @@ public sealed class MainViewModel : ViewModelBase
 
     private void SelectQuizAnswer(object? parameter)
     {
-        if (CurrentQuizQuestion.SelectedIndex >= 0)
+        if (IsQuizSubmitted)
         {
             return;
         }
@@ -1641,6 +1781,10 @@ public sealed class MainViewModel : ViewModelBase
         if (int.TryParse(parameter?.ToString(), out var selectedIndex))
         {
             CurrentQuizQuestion.SelectedIndex = selectedIndex;
+            QuizSubmitMessage = "";
+            IsIncompleteQuizSubmitDialogOpen = false;
+            OnPropertyChanged(nameof(AnsweredQuizCount));
+            OnPropertyChanged(nameof(IncompleteQuizSubmitText));
             OnPropertyChanged(nameof(QuizScorePercentage));
             OnPropertyChanged(nameof(QuizScoreText));
         }
@@ -1662,15 +1806,52 @@ public sealed class MainViewModel : ViewModelBase
         OnTodayWordChanged();
     }
 
-    private void NextQuiz()
+    private void PreviousQuiz()
     {
-        if (CurrentQuizIndex >= QuizQuestions.Count - 1)
+        if (CurrentQuizIndex <= 0)
         {
-            CurrentView = "QuizResult";
             return;
         }
 
-        CurrentQuizIndex++;
+        CurrentQuizIndex--;
+    }
+
+    private void NextQuiz()
+    {
+        if (CurrentQuizIndex < QuizQuestions.Count - 1)
+        {
+            CurrentQuizIndex++;
+        }
+    }
+
+    private void SubmitQuiz()
+    {
+        var answeredCount = AnsweredQuizCount;
+        if (answeredCount < QuizQuestions.Count)
+        {
+            OnPropertyChanged(nameof(IncompleteQuizSubmitText));
+            IsIncompleteQuizSubmitDialogOpen = true;
+            return;
+        }
+
+        CompleteQuizSubmission();
+    }
+
+    private void CompleteQuizSubmission()
+    {
+        StopQuizTimer();
+        QuizCompletedTime = QuizElapsedTime;
+        foreach (var question in QuizQuestions)
+        {
+            question.IsSubmitted = true;
+        }
+
+        QuizSubmitMessage = "";
+        IsIncompleteQuizSubmitDialogOpen = false;
+        OnPropertyChanged(nameof(IsQuizSubmitted));
+        OnPropertyChanged(nameof(QuizScorePercentage));
+        OnPropertyChanged(nameof(QuizScoreText));
+        CurrentView = "QuizResult";
     }
 
     private void Login()
@@ -1914,24 +2095,55 @@ public sealed class MainViewModel : ViewModelBase
         SelectTab("Dashboard");
     }
 
-    private void ResetQuiz()
+    private void ResetQuiz(IEnumerable<VocabularyWord>? sourceWords = null)
     {
         if (!RequireAuthentication("Quiz"))
         {
             return;
         }
 
-        RefreshQuizQuestions();
+        RefreshQuizQuestions(sourceWords);
 
         foreach (var question in QuizQuestions)
         {
             question.SelectedIndex = -1;
+            question.IsSubmitted = false;
         }
 
+        QuizElapsedTime = TimeSpan.Zero;
+        QuizCompletedTime = TimeSpan.Zero;
+        QuizSubmitMessage = "";
+        IsIncompleteQuizSubmitDialogOpen = false;
         CurrentQuizIndex = 0;
+        StartQuizTimer();
+        OnPropertyChanged(nameof(AnsweredQuizCount));
+        OnPropertyChanged(nameof(IsQuizSubmitted));
         OnPropertyChanged(nameof(QuizScorePercentage));
         OnPropertyChanged(nameof(QuizScoreText));
         CurrentView = "Quiz";
+    }
+
+    private void StartQuizTimer()
+    {
+        if (!quizTimer.IsEnabled)
+        {
+            quizTimer.Start();
+        }
+    }
+
+    private void StopQuizTimer()
+    {
+        if (quizTimer.IsEnabled)
+        {
+            quizTimer.Stop();
+        }
+    }
+
+    private static string FormatQuizTime(TimeSpan time)
+    {
+        return time.TotalHours >= 1
+            ? $"{(int)time.TotalHours:00}:{time.Minutes:00}:{time.Seconds:00}"
+            : $"{time.Minutes:00}:{time.Seconds:00}";
     }
 
     private static bool IsValidEmail(string value)
@@ -2085,10 +2297,10 @@ public sealed class MainViewModel : ViewModelBase
         SaveAppState();
     }
 
-    private void RefreshQuizQuestions()
+    private void RefreshQuizQuestions(IEnumerable<VocabularyWord>? sourceWords = null)
     {
         QuizQuestions.Clear();
-        foreach (var question in quizService.CreateQuestions(Words))
+        foreach (var question in quizService.CreateQuestions(sourceWords ?? Words))
         {
             QuizQuestions.Add(question);
         }
@@ -2097,6 +2309,8 @@ public sealed class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(CurrentQuizQuestion));
         OnPropertyChanged(nameof(QuizProgressText));
         OnPropertyChanged(nameof(QuizProgressValue));
+        OnPropertyChanged(nameof(AnsweredQuizCount));
+        OnPropertyChanged(nameof(IsQuizSubmitted));
         OnPropertyChanged(nameof(QuizScorePercentage));
         OnPropertyChanged(nameof(QuizScoreText));
     }
