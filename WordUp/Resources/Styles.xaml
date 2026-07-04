@@ -15,6 +15,7 @@
     <Style x:Key="SectionTitleText" TargetType="TextBlock">
         <Setter Property="FontSize" Value="18" />
         <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource IndigoDarkBrush}" />
         <Setter Property="Margin" Value="0,18,0,10" />
     </Style>
 
@@ -84,7 +85,7 @@
     <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource RoundedButtonBase}" />
 
     <Style x:Key="OutlineButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
-        <Setter Property="Background" Value="White" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource IndigoBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="BorderBrush" Value="{DynamicResource IndigoBrush}" />
@@ -98,7 +99,7 @@
     <Style x:Key="TextLinkButton" TargetType="Button">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Foreground" Value="#111322" />
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
         <Setter Property="Padding" Value="0" />
         <Setter Property="FontFamily" Value="Segoe UI" />
         <Setter Property="Cursor" Value="Hand" />
@@ -127,23 +128,25 @@
 
     <Style x:Key="AuthTabButton" TargetType="Button" BasedOn="{StaticResource TextLinkButton}">
         <Setter Property="Height" Value="34" />
-        <Setter Property="Foreground" Value="{StaticResource MutedTextBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource MutedTextBrush}" />
         <Setter Property="FontSize" Value="15" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="VerticalContentAlignment" Value="Center" />
     </Style>
 
     <Style x:Key="ActiveAuthTabButton" TargetType="Button" BasedOn="{StaticResource AuthTabButton}">
-        <Setter Property="Foreground" Value="{StaticResource IndigoDarkBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource IndigoDarkBrush}" />
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
     <Style x:Key="TextInput" TargetType="TextBox">
         <Setter Property="Height" Value="36" />
         <Setter Property="Padding" Value="10,7" />
-        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Background" Value="White" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource PrimaryTextBrush}" />
         <Setter Property="FontFamily" Value="Segoe UI" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
@@ -164,9 +167,11 @@
     <Style x:Key="PasswordInput" TargetType="PasswordBox">
         <Setter Property="Height" Value="36" />
         <Setter Property="Padding" Value="10,7" />
-        <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="Background" Value="White" />
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource PrimaryTextBrush}" />
         <Setter Property="FontFamily" Value="Segoe UI" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="Template">
@@ -188,7 +193,7 @@
         <Setter Property="Height" Value="38" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="0" />
-        <Setter Property="Foreground" Value="{StaticResource IndigoDarkBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource IndigoDarkBrush}" />
         <Setter Property="FontSize" Value="18" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -206,7 +211,10 @@
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Root" Property="Background" Value="#F0EEFA" />
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource HoverSurfaceBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource HoverSurfaceBrush}" />
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="Root" Property="Opacity" Value="0.82" />
@@ -215,5 +223,10 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <Style TargetType="CheckBox">
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+        <Setter Property="FontFamily" Value="Segoe UI" />
     </Style>
 </ResourceDictionary>

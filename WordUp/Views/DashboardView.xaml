@@ -90,13 +90,13 @@
         <Border Style="{StaticResource Card}" Padding="16" Visibility="{Binding IsGuest, Converter={StaticResource BoolToVisibility}}">
             <StackPanel>
                 <TextBlock Text="WordUp giúp bạn tự xây dựng kho từ vựng theo từng bài học, học bằng thẻ ghi nhớ, làm bài kiểm tra theo đúng bài đang học và theo dõi tiến độ sau mỗi lần ôn tập." Style="{StaticResource MutedText}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,14" />
-                <Border Background="#F7F4FC" CornerRadius="10" Padding="12" Margin="0,0,0,8">
+                <Border Background="{DynamicResource AppBackgroundBrush}" CornerRadius="10" Padding="12" Margin="0,0,0,8">
                     <TextBlock Text="Nhập nhanh từ vựng bằng .txt, .csv, .docx hoặc .xlsx." FontWeight="SemiBold" TextWrapping="Wrap" />
                 </Border>
-                <Border Background="#F7F4FC" CornerRadius="10" Padding="12" Margin="0,0,0,8">
+                <Border Background="{DynamicResource AppBackgroundBrush}" CornerRadius="10" Padding="12" Margin="0,0,0,8">
                     <TextBlock Text="Ôn tập bằng flashcard và phát âm IPA để ghi nhớ tốt hơn." FontWeight="SemiBold" TextWrapping="Wrap" />
                 </Border>
-                <Border Background="#F7F4FC" CornerRadius="10" Padding="12">
+                <Border Background="{DynamicResource AppBackgroundBrush}" CornerRadius="10" Padding="12">
                     <TextBlock Text="Kiểm tra cuối bài, xem đáp án đúng/sai và tổng thời gian làm bài." FontWeight="SemiBold" TextWrapping="Wrap" />
                 </Border>
             </StackPanel>
@@ -198,10 +198,10 @@
                 </Grid>
                 <TextBlock Text="{Binding TodayWordHint}" Style="{StaticResource MutedText}" FontSize="14" TextAlignment="Center" Margin="0,0,0,8" />
                 <TextBlock Text="{Binding TodayWordPrompt}" Style="{StaticResource MutedText}" TextAlignment="Center" Margin="0,0,0,14" />
-                <Button Content="{Binding TodayChoiceA, StringFormat=A. {0}}" Style="{StaticResource OutlineButton}" Background="{Binding TodayChoiceABackground}" BorderBrush="{Binding TodayChoiceABorder}" IsHitTestVisible="{Binding CanSelectTodayWordAnswer}" HorizontalContentAlignment="Left" Margin="0,0,0,8" Command="{Binding SelectTodayWordAnswerCommand}" CommandParameter="0" />
-                <Button Content="{Binding TodayChoiceB, StringFormat=B. {0}}" Style="{StaticResource OutlineButton}" Background="{Binding TodayChoiceBBackground}" BorderBrush="{Binding TodayChoiceBBorder}" IsHitTestVisible="{Binding CanSelectTodayWordAnswer}" HorizontalContentAlignment="Left" Margin="0,0,0,8" Command="{Binding SelectTodayWordAnswerCommand}" CommandParameter="1" />
-                <Button Content="{Binding TodayChoiceC, StringFormat=C. {0}}" Style="{StaticResource OutlineButton}" Background="{Binding TodayChoiceCBackground}" BorderBrush="{Binding TodayChoiceCBorder}" IsHitTestVisible="{Binding CanSelectTodayWordAnswer}" HorizontalContentAlignment="Left" Margin="0,0,0,8" Command="{Binding SelectTodayWordAnswerCommand}" CommandParameter="2" />
-                <Button Content="{Binding TodayChoiceD, StringFormat=D. {0}}" Style="{StaticResource OutlineButton}" Background="{Binding TodayChoiceDBackground}" BorderBrush="{Binding TodayChoiceDBorder}" IsHitTestVisible="{Binding CanSelectTodayWordAnswer}" HorizontalContentAlignment="Left" Margin="0,0,0,10" Command="{Binding SelectTodayWordAnswerCommand}" CommandParameter="3" />
+                <Button Content="{Binding TodayChoiceA, StringFormat=A. {0}}" Style="{StaticResource OutlineButton}" Background="{Binding TodayChoiceABackground}" BorderBrush="{Binding TodayChoiceABorder}" Foreground="{Binding TodayChoiceAForeground}" IsHitTestVisible="{Binding CanSelectTodayWordAnswer}" HorizontalContentAlignment="Left" Margin="0,0,0,8" Command="{Binding SelectTodayWordAnswerCommand}" CommandParameter="0" />
+                <Button Content="{Binding TodayChoiceB, StringFormat=B. {0}}" Style="{StaticResource OutlineButton}" Background="{Binding TodayChoiceBBackground}" BorderBrush="{Binding TodayChoiceBBorder}" Foreground="{Binding TodayChoiceBForeground}" IsHitTestVisible="{Binding CanSelectTodayWordAnswer}" HorizontalContentAlignment="Left" Margin="0,0,0,8" Command="{Binding SelectTodayWordAnswerCommand}" CommandParameter="1" />
+                <Button Content="{Binding TodayChoiceC, StringFormat=C. {0}}" Style="{StaticResource OutlineButton}" Background="{Binding TodayChoiceCBackground}" BorderBrush="{Binding TodayChoiceCBorder}" Foreground="{Binding TodayChoiceCForeground}" IsHitTestVisible="{Binding CanSelectTodayWordAnswer}" HorizontalContentAlignment="Left" Margin="0,0,0,8" Command="{Binding SelectTodayWordAnswerCommand}" CommandParameter="2" />
+                <Button Content="{Binding TodayChoiceD, StringFormat=D. {0}}" Style="{StaticResource OutlineButton}" Background="{Binding TodayChoiceDBackground}" BorderBrush="{Binding TodayChoiceDBorder}" Foreground="{Binding TodayChoiceDForeground}" IsHitTestVisible="{Binding CanSelectTodayWordAnswer}" HorizontalContentAlignment="Left" Margin="0,0,0,10" Command="{Binding SelectTodayWordAnswerCommand}" CommandParameter="3" />
                 <TextBlock Text="{Binding TodayWordResultText}" Style="{StaticResource MutedText}" TextAlignment="Center" />
             </StackPanel>
         </Border>

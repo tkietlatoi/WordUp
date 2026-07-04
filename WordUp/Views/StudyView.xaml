@@ -46,7 +46,7 @@
             <Setter Property="Height" Value="38" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Foreground" Value="{StaticResource IndigoDarkBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource IndigoDarkBrush}" />
             <Setter Property="FontSize" Value="18" />
             <Setter Property="FontWeight" Value="SemiBold" />
             <Setter Property="Cursor" Value="Hand" />
@@ -65,7 +65,7 @@
 
     <Grid Margin="0">
         <StackPanel>
-        <Grid Background="White" Height="54">
+        <Grid Background="{DynamicResource SurfaceBrush}" Height="54">
             <Button Content="X" Style="{StaticResource StudyCloseButton}" HorizontalAlignment="Left" Command="{Binding ShowLessonListCommand}" Visibility="{Binding IsStudyFlashcardOpen, Converter={StaticResource BoolToVisibility}}" />
             <TextBlock Text="{Binding StudyHeaderTitle}" Style="{StaticResource PageTitleText}" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
             <TextBlock Text="{Binding StudyProgressText}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,18,0" Visibility="{Binding IsStudyFlashcardOpen, Converter={StaticResource BoolToVisibility}}" />
@@ -75,8 +75,8 @@
             <Grid Margin="0,0,0,16">
                 <TextBox Style="{StaticResource TextInput}" Text="{Binding LessonSearchText, UpdateSourceTrigger=PropertyChanged}" Height="38" Margin="0,0,82,0" VerticalAlignment="Center" />
                 <TextBlock Text="Tìm bài học..." Style="{StaticResource MutedText}" Margin="12,0,82,0" VerticalAlignment="Center" IsHitTestVisible="False" Visibility="{Binding ShowLessonSearchPlaceholder, Converter={StaticResource BoolToVisibility}}" />
-                <Button Style="{StaticResource PrimaryButton}" Foreground="#111322" Width="72" Height="38" HorizontalAlignment="Right" Command="{Binding AddLessonCommand}">
-                    <TextBlock Text="Thêm" Foreground="#111322" />
+                <Button Style="{StaticResource PrimaryButton}" Width="72" Height="38" HorizontalAlignment="Right" Command="{Binding AddLessonCommand}">
+                    <TextBlock Text="Thêm" />
                 </Button>
             </Grid>
 
@@ -90,7 +90,7 @@
                         </ItemsControl.ItemContainerStyle>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="16" MinHeight="146" Margin="0,0,0,10" HorizontalAlignment="Stretch">
+                                <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="16" MinHeight="146" Margin="0,0,0,10" HorizontalAlignment="Stretch">
                                     <StackPanel>
                                         <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="15" />
                                         <TextBlock Text="{Binding UpdatedAtText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
@@ -98,14 +98,14 @@
                                         <ProgressBar Value="{Binding ProgressPercentage, Mode=OneWay}" Maximum="100" Height="7" Foreground="{StaticResource SuccessBrush}" Margin="0,10,0,0" />
                                         <TextBlock Text="{Binding ProgressText}" Style="{StaticResource MutedText}" HorizontalAlignment="Right" Margin="0,6,0,0" />
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
-                                            <Button Style="{StaticResource PrimaryButton}" Background="#5F74DC" Foreground="#111322" Width="56" Height="32" Padding="10,0" Margin="0,0,7,0" Command="{Binding DataContext.EditLessonCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
-                                                <TextBlock Text="Sửa" Foreground="#111322" />
+                                            <Button Style="{StaticResource PrimaryButton}" Background="#5F74DC" Width="56" Height="32" Padding="10,0" Margin="0,0,7,0" Command="{Binding DataContext.EditLessonCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
+                                                <TextBlock Text="Sửa" />
                                             </Button>
-                                            <Button Style="{StaticResource PrimaryButton}" Background="#E05A66" Foreground="#111322" Width="56" Height="32" Padding="10,0" Margin="0,0,7,0" Command="{Binding DataContext.DeleteLessonCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
-                                                <TextBlock Text="Xóa" Foreground="#111322" />
+                                            <Button Style="{StaticResource PrimaryButton}" Background="#E05A66" Width="56" Height="32" Padding="10,0" Margin="0,0,7,0" Command="{Binding DataContext.DeleteLessonCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
+                                                <TextBlock Text="Xóa" />
                                             </Button>
-                                            <Button Style="{StaticResource PrimaryButton}" Background="#34B77D" Foreground="#111322" Width="56" Height="32" Padding="10,0" Command="{Binding DataContext.StartLessonCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
-                                                <TextBlock Text="Học" Foreground="#111322" />
+                                            <Button Style="{StaticResource PrimaryButton}" Background="#34B77D" Width="56" Height="32" Padding="10,0" Command="{Binding DataContext.StartLessonCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
+                                                <TextBlock Text="Học" />
                                             </Button>
                                         </StackPanel>
                                     </StackPanel>
@@ -133,8 +133,8 @@
                     <TextBox Style="{StaticResource TextInput}" Text="{Binding NewLessonMeaning, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,10" />
                     <TextBlock Text="Loại từ" Style="{StaticResource MutedText}" />
                     <TextBox Style="{StaticResource TextInput}" Text="{Binding NewLessonType, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,12" />
-                    <Button Style="{StaticResource PrimaryButton}" Foreground="#111322" HorizontalAlignment="Right" Command="{Binding AddLessonWordCommand}">
-                        <TextBlock Text="{Binding LessonWordEditorButtonText}" Foreground="#111322" />
+                    <Button Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Command="{Binding AddLessonWordCommand}">
+                        <TextBlock Text="{Binding LessonWordEditorButtonText}" />
                     </Button>
                 </StackPanel>
             </Border>
@@ -145,7 +145,7 @@
                     <TextBlock Text="Hỗ trợ .txt, .csv, .docx, .xlsx. Mỗi dòng/hàng cần ít nhất: từ, nghĩa. Ví dụ: teacher, giáo viên, noun hoặc teacher - giáo viên - noun." Style="{StaticResource MutedText}" Margin="0,0,0,12" TextWrapping="Wrap" />
                     <Grid>
                         <TextBox Style="{StaticResource TextInput}" Text="{Binding NewLessonFilePath}" IsReadOnly="True" Margin="0,0,104,0" />
-                        <Button Content="Chọn tệp" Style="{StaticResource PrimaryButton}" Foreground="#111322" Width="96" Height="36" HorizontalAlignment="Right" Command="{Binding ImportLessonFileCommand}" />
+                        <Button Content="Chọn tệp" Style="{StaticResource PrimaryButton}" Width="96" Height="36" HorizontalAlignment="Right" Command="{Binding ImportLessonFileCommand}" />
                     </Grid>
                 </StackPanel>
             </Border>
@@ -166,7 +166,7 @@
                         </ItemsControl.ItemContainerStyle>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="White" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="14" Margin="0,0,0,8" HorizontalAlignment="Stretch">
+                                <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="14" Margin="0,0,0,8" HorizontalAlignment="Stretch">
                                     <Grid>
                                         <StackPanel Margin="0,0,132,0">
                                             <TextBlock Text="{Binding Word}" FontWeight="SemiBold" />
@@ -175,11 +175,11 @@
                                             <TextBlock Text="{Binding Type}" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                            <Button Style="{StaticResource PrimaryButton}" Background="#5F74DC" Foreground="#111322" Width="52" Height="32" Padding="8,0" Margin="0,0,7,0" Command="{Binding DataContext.EditLessonWordCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
-                                                <TextBlock Text="Sửa" Foreground="#111322" />
+                                            <Button Style="{StaticResource PrimaryButton}" Background="#5F74DC" Width="52" Height="32" Padding="8,0" Margin="0,0,7,0" Command="{Binding DataContext.EditLessonWordCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
+                                                <TextBlock Text="Sửa" />
                                             </Button>
-                                            <Button Style="{StaticResource PrimaryButton}" Background="#E05A66" Foreground="#111322" Width="52" Height="32" Padding="8,0" Command="{Binding DataContext.DeleteLessonWordCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
-                                                <TextBlock Text="Xóa" Foreground="#111322" />
+                                            <Button Style="{StaticResource PrimaryButton}" Background="#E05A66" Width="52" Height="32" Padding="8,0" Command="{Binding DataContext.DeleteLessonWordCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
+                                                <TextBlock Text="Xóa" />
                                             </Button>
                                         </StackPanel>
                                     </Grid>
@@ -192,7 +192,7 @@
 
             <UniformGrid Columns="2" Margin="0,10,0,0">
                 <Button Content="Hủy" Style="{StaticResource OutlineButton}" Margin="0,0,6,0" Command="{Binding CancelNewLessonCommand}" />
-                <Button Content="{Binding SaveLessonButtonText}" Style="{StaticResource PrimaryButton}" Foreground="#111322" Margin="6,0,0,0" Command="{Binding SaveNewLessonCommand}" />
+                <Button Content="{Binding SaveLessonButtonText}" Style="{StaticResource PrimaryButton}" Margin="6,0,0,0" Command="{Binding SaveNewLessonCommand}" />
             </UniformGrid>
         </StackPanel>
 
@@ -231,7 +231,7 @@
             <UniformGrid Columns="3" Margin="0,14,0,0">
                 <Button Content="&lt;" Style="{StaticResource OutlineButton}" FontSize="20" Margin="0,0,6,0" Command="{Binding PreviousWordCommand}" />
                 <Button Content="&gt;" Style="{StaticResource OutlineButton}" FontSize="20" Margin="6,0" Command="{Binding NextWordCommand}" />
-                <Button Content="{Binding StudyAutoButtonText}" Style="{StaticResource PrimaryButton}" Foreground="#111322" FontSize="18" Margin="6,0,0,0" ToolTip="Tự động" Command="{Binding ToggleStudyAutoCommand}" />
+                <Button Content="{Binding StudyAutoButtonText}" Style="{StaticResource PrimaryButton}" FontSize="18" Margin="6,0,0,0" ToolTip="Tự động" Command="{Binding ToggleStudyAutoCommand}" />
             </UniformGrid>
             </StackPanel>
 
@@ -240,9 +240,9 @@
                     <StackPanel>
                         <TextBlock Text="Hoàn thành bài học" Style="{StaticResource SectionTitleText}" TextAlignment="Center" Margin="0,0,0,8" />
                         <TextBlock Text="Bạn đã học hết các thẻ trong bài này." Style="{StaticResource MutedText}" TextAlignment="Center" Margin="0,0,0,16" />
-                        <Button Content="Học lại" Style="{StaticResource PrimaryButton}" Foreground="#111322" Margin="0,0,0,8" Command="{Binding RestartLessonCommand}" />
+                        <Button Content="Học lại" Style="{StaticResource PrimaryButton}" Margin="0,0,0,8" Command="{Binding RestartLessonCommand}" />
                         <Button Content="Quay lại bài học" Style="{StaticResource OutlineButton}" Margin="0,0,0,8" Command="{Binding BackToLessonsFromCompleteCommand}" />
-                        <Button Content="Làm bài kiểm tra" Style="{StaticResource PrimaryButton}" Foreground="#111322" Command="{Binding StartQuizFromLessonCommand}" />
+                        <Button Content="Làm bài kiểm tra" Style="{StaticResource PrimaryButton}" Command="{Binding StartQuizFromLessonCommand}" />
                     </StackPanel>
                 </Border>
             </Border>

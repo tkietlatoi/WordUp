@@ -564,6 +564,7 @@ public sealed class MainViewModel : ViewModelBase
             if (SetProperty(ref isDarkMode, value))
             {
                 ApplyTheme();
+                OnTodayWordChanged();
                 SaveAppState();
             }
         }
@@ -930,6 +931,10 @@ public sealed class MainViewModel : ViewModelBase
     public Brush TodayChoiceBBorder => GetTodayChoiceBorder(1);
     public Brush TodayChoiceCBorder => GetTodayChoiceBorder(2);
     public Brush TodayChoiceDBorder => GetTodayChoiceBorder(3);
+    public Brush TodayChoiceAForeground => GetTodayChoiceForeground(0);
+    public Brush TodayChoiceBForeground => GetTodayChoiceForeground(1);
+    public Brush TodayChoiceCForeground => GetTodayChoiceForeground(2);
+    public Brush TodayChoiceDForeground => GetTodayChoiceForeground(3);
     public bool CanSelectTodayWordAnswer => todayWordSelectedIndex < 0;
     public string TodayWordResultText => todayWordSelectedIndex < 0
         ? "Chọn một đáp án để kiểm tra."
@@ -2027,6 +2032,8 @@ public sealed class MainViewModel : ViewModelBase
         User.Email = registeredUser.Email;
         User.Phone = registeredUser.Phone;
         User.Level = registeredUser.Level;
+        User.Note = "";
+        User.AvatarPath = "";
         ClearLearningData();
         LoadProfileEditor();
         SaveAppState();
@@ -2159,9 +2166,49 @@ public sealed class MainViewModel : ViewModelBase
             return;
         }
 
-        User.AvatarPath = dialog.FileName;
+        User.AvatarPath = SaveAvatarForCurrentAccount(dialog.FileName);
         IsAvatarDialogOpen = false;
         SaveAppState();
+    }
+
+    private string SaveAvatarForCurrentAccount(string sourcePath)
+    {
+        if (string.IsNullOrWhiteSpace(User.Email))
+        {
+            return sourcePath;
+        }
+
+        var extension = Path.GetExtension(sourcePath);
+        if (string.IsNullOrWhiteSpace(extension))
+        {
+            extension = ".png";
+        }
+
+        var avatarDirectory = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "WordUp",
+            "Avatars");
+        Directory.CreateDirectory(avatarDirectory);
+
+        var avatarPath = Path.Combine(avatarDirectory, $"{CreateAccountFileName(User.Email)}{extension.ToLowerInvariant()}");
+        if (!Path.GetFullPath(sourcePath).Equals(Path.GetFullPath(avatarPath), StringComparison.OrdinalIgnoreCase))
+        {
+            File.Copy(sourcePath, avatarPath, overwrite: true);
+        }
+
+        return avatarPath;
+    }
+
+    private static string CreateAccountFileName(string email)
+    {
+        var invalidCharacters = Path.GetInvalidFileNameChars();
+        var builder = new StringBuilder(email.Trim().ToLowerInvariant().Length);
+        foreach (var character in email.Trim().ToLowerInvariant())
+        {
+            builder.Append(invalidCharacters.Contains(character) || character is '@' or '.' ? '_' : character);
+        }
+
+        return builder.ToString();
     }
 
     private void ApplyTheme()
@@ -2179,6 +2226,7 @@ public sealed class MainViewModel : ViewModelBase
             SetBrush("PrimaryTextBrush", Color.FromRgb(242, 244, 250));
             SetBrush("BorderBrush", Color.FromRgb(67, 72, 94));
             SetBrush("IndigoDarkBrush", Color.FromRgb(204, 211, 255));
+            SetBrush("HoverSurfaceBrush", Color.FromRgb(48, 52, 70));
         }
         else
         {
@@ -2188,6 +2236,7 @@ public sealed class MainViewModel : ViewModelBase
             SetBrush("PrimaryTextBrush", Color.FromRgb(17, 19, 34));
             SetBrush("BorderBrush", Color.FromRgb(221, 217, 235));
             SetBrush("IndigoDarkBrush", Color.FromRgb(21, 32, 138));
+            SetBrush("HoverSurfaceBrush", Color.FromRgb(240, 238, 250));
         }
     }
 
@@ -2571,40 +2620,95 @@ public sealed class MainViewModel : ViewModelBase
     {
         if (todayWordSelectedIndex < 0)
         {
-            return Brushes.White;
+            return GetApplicationBrush("SurfaceBrush", Brushes.White);
         }
 
         if (index == todayWordCorrectIndex)
         {
+            if (IsDarkMode)
+            {
+                return new SolidColorBrush(Color.FromRgb(24, 72, 48));
+            }
+
             return new SolidColorBrush(Color.FromRgb(226, 247, 235));
         }
 
         if (index == todayWordSelectedIndex)
         {
+            if (IsDarkMode)
+            {
+                return new SolidColorBrush(Color.FromRgb(86, 36, 44));
+            }
+
             return new SolidColorBrush(Color.FromRgb(253, 229, 232));
         }
 
-        return Brushes.White;
+        return GetApplicationBrush("SurfaceBrush", Brushes.White);
     }
 
     private Brush GetTodayChoiceBorder(int index)
     {
         if (todayWordSelectedIndex < 0)
         {
-            return new SolidColorBrush(Color.FromRgb(116, 89, 217));
+            return GetApplicationBrush("IndigoBrush", new SolidColorBrush(Color.FromRgb(116, 89, 217)));
         }
 
         if (index == todayWordCorrectIndex)
         {
+            if (IsDarkMode)
+            {
+                return new SolidColorBrush(Color.FromRgb(81, 210, 132));
+            }
+
             return new SolidColorBrush(Color.FromRgb(37, 150, 90));
         }
 
         if (index == todayWordSelectedIndex)
         {
+            if (IsDarkMode)
+            {
+                return new SolidColorBrush(Color.FromRgb(255, 129, 143));
+            }
+
             return new SolidColorBrush(Color.FromRgb(200, 32, 47));
         }
 
-        return new SolidColorBrush(Color.FromRgb(222, 226, 235));
+        return GetApplicationBrush("BorderBrush", new SolidColorBrush(Color.FromRgb(222, 226, 235)));
+    }
+
+    private Brush GetTodayChoiceForeground(int index)
+    {
+        if (todayWordSelectedIndex < 0)
+        {
+            return GetApplicationBrush("IndigoBrush", new SolidColorBrush(Color.FromRgb(41, 57, 184)));
+        }
+
+        if (index == todayWordCorrectIndex)
+        {
+            if (IsDarkMode)
+            {
+                return new SolidColorBrush(Color.FromRgb(224, 255, 237));
+            }
+
+            return new SolidColorBrush(Color.FromRgb(20, 104, 62));
+        }
+
+        if (index == todayWordSelectedIndex)
+        {
+            if (IsDarkMode)
+            {
+                return new SolidColorBrush(Color.FromRgb(255, 235, 238));
+            }
+
+            return new SolidColorBrush(Color.FromRgb(160, 24, 38));
+        }
+
+        return GetApplicationBrush("PrimaryTextBrush", Brushes.Black);
+    }
+
+    private static Brush GetApplicationBrush(string key, Brush fallback)
+    {
+        return Application.Current?.Resources[key] as Brush ?? fallback;
     }
 
     private static string GetTodayChoiceLabel(int index)
@@ -2637,6 +2741,10 @@ public sealed class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(TodayChoiceBBorder));
         OnPropertyChanged(nameof(TodayChoiceCBorder));
         OnPropertyChanged(nameof(TodayChoiceDBorder));
+        OnPropertyChanged(nameof(TodayChoiceAForeground));
+        OnPropertyChanged(nameof(TodayChoiceBForeground));
+        OnPropertyChanged(nameof(TodayChoiceCForeground));
+        OnPropertyChanged(nameof(TodayChoiceDForeground));
         OnPropertyChanged(nameof(CanSelectTodayWordAnswer));
         OnPropertyChanged(nameof(TodayWordResultText));
     }

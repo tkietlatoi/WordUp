@@ -6,7 +6,7 @@
             <Grid>
                 <Button Content="x" Style="{StaticResource IconButton}" HorizontalAlignment="Left" Command="{Binding SelectTabCommand}" CommandParameter="Study" />
                 <TextBlock Text="Kiểm tra" Style="{StaticResource PageTitleText}" FontSize="21" HorizontalAlignment="Center" />
-                <Button Content="Nộp" Style="{StaticResource PrimaryButton}" Foreground="#111322" Width="76" Height="36" Padding="12,0" HorizontalAlignment="Right" Command="{Binding SubmitQuizCommand}" />
+                <Button Content="Nộp" Style="{StaticResource PrimaryButton}" Width="76" Height="36" Padding="12,0" HorizontalAlignment="Right" Command="{Binding SubmitQuizCommand}" />
             </Grid>
 
             <Grid Margin="0,20,0,6">
@@ -40,7 +40,7 @@
                     <TextBlock Text="{Binding IncompleteQuizSubmitText}" Style="{StaticResource MutedText}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,16" />
                     <UniformGrid Columns="2">
                         <Button Content="Quay lại" Style="{StaticResource OutlineButton}" Margin="0,0,6,0" Command="{Binding ContinueQuizCommand}" />
-                        <Button Content="Nộp" Style="{StaticResource PrimaryButton}" Foreground="#111322" Margin="6,0,0,0" Command="{Binding ForceSubmitQuizCommand}" />
+                        <Button Content="Nộp" Style="{StaticResource PrimaryButton}" Margin="6,0,0,0" Command="{Binding ForceSubmitQuizCommand}" />
                     </UniformGrid>
                 </StackPanel>
             </Border>

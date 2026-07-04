@@ -47,7 +47,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border BorderBrush="{StaticResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="4">
+                            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="8" Margin="4">
                                 <StackPanel>
                                     <TextBlock Text="Huy hiệu" FontSize="14" TextAlignment="Center" Foreground="{StaticResource IndigoBrush}" />
                                     <TextBlock Text="{Binding Name}" TextAlignment="Center" FontSize="12" />

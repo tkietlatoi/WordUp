@@ -16,7 +16,7 @@
                   CanUserAddRows="False"
                   HeadersVisibility="Column"
                   Height="250"
-                  BorderBrush="{StaticResource BorderBrush}"
+                  BorderBrush="{DynamicResource BorderBrush}"
                   BorderThickness="1">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Word" Binding="{Binding Word}" Width="*" />

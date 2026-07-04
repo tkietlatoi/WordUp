@@ -264,6 +264,7 @@ public sealed class LocalStorageService
         EnsureAccountAvatarPathColumn(connection);
         EnsureSettingsDarkModeColumn(connection);
         EnsureLessonWordFavoriteColumn(connection);
+        ClearSharedAccountAvatars(connection);
     }
 
     private static void ResetLegacySchemaIfNeeded(SqliteConnection connection)
@@ -334,6 +335,58 @@ public sealed class LocalStorageService
         using var command = connection.CreateCommand();
         command.CommandText = "ALTER TABLE lesson_words ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0;";
         command.ExecuteNonQuery();
+    }
+
+    private static void ClearSharedAccountAvatars(SqliteConnection connection)
+    {
+        if (!TableExists(connection, "accounts") || !ColumnExists(connection, "accounts", "avatar_path"))
+        {
+            return;
+        }
+
+        using var selectCommand = connection.CreateCommand();
+        selectCommand.CommandText = """
+            SELECT email, avatar_path, updated_at
+            FROM accounts
+            WHERE avatar_path <> ''
+            ORDER BY lower(avatar_path), datetime(updated_at), lower(email);
+            """;
+
+        var rows = new List<(string Email, string AvatarPath, DateTime UpdatedAt)>();
+        using (var reader = selectCommand.ExecuteReader())
+        {
+            while (reader.Read())
+            {
+                rows.Add((
+                    reader.GetString(0),
+                    reader.GetString(1),
+                    ParseDateTime(reader.GetString(2))));
+            }
+        }
+
+        var emailsToClear = rows
+            .GroupBy(row => row.AvatarPath, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .SelectMany(group => group
+                .OrderBy(row => row.Email.Length)
+                .ThenBy(row => row.UpdatedAt)
+                .ThenBy(row => row.Email, StringComparer.OrdinalIgnoreCase)
+                .Skip(1)
+                .Select(row => row.Email))
+            .ToList();
+
+        foreach (var email in emailsToClear)
+        {
+            using var updateCommand = connection.CreateCommand();
+            updateCommand.CommandText = """
+                UPDATE accounts
+                SET avatar_path = '',
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE lower(email) = lower($email);
+                """;
+            updateCommand.Parameters.AddWithValue("$email", email);
+            updateCommand.ExecuteNonQuery();
+        }
     }
 
     private static bool TableExists(SqliteConnection connection, string tableName)
