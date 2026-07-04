@@ -58,20 +58,37 @@
 
     <StackPanel Margin="22,18,22,22">
         <Grid>
-            <StackPanel Margin="0,0,104,0">
+            <StackPanel Margin="0,0,116,0">
                 <TextBlock Text="{Binding DashboardGreeting}" Style="{StaticResource PageTitleText}" />
-                <TextBlock Text="{Binding DashboardSubtitle}" Style="{StaticResource MutedText}" Margin="0,6,0,0" />
+                <TextBlock Text="{Binding DashboardSubtitle}" Style="{StaticResource MutedText}" Margin="0,6,0,0" TextWrapping="Wrap" />
             </StackPanel>
             <Button Content="{Binding User.Initials}" Style="{StaticResource AvatarButton}" HorizontalAlignment="Right" Command="{Binding NavigateCommand}" CommandParameter="Account" Visibility="{Binding IsAuthenticated, Converter={StaticResource BoolToVisibility}}" />
-            <Button Content="Đăng nhập" Style="{StaticResource PrimaryButton}" Width="92" Height="38" HorizontalAlignment="Right" Command="{Binding NavigateCommand}" CommandParameter="Login" Visibility="{Binding IsGuest, Converter={StaticResource BoolToVisibility}}" />
+            <Button Content="Đăng nhập" Style="{StaticResource PrimaryButton}" Width="104" Height="38" Padding="10,0" HorizontalAlignment="Right" Command="{Binding NavigateCommand}" CommandParameter="Login" Visibility="{Binding IsGuest, Converter={StaticResource BoolToVisibility}}" />
         </Grid>
 
         <Border Style="{StaticResource Card}" Margin="0,24,0,14" Visibility="{Binding IsGuest, Converter={StaticResource BoolToVisibility}}">
             <StackPanel>
-                <TextBlock Text="Welcome" FontSize="26" FontWeight="Bold" TextAlignment="Center" Foreground="{StaticResource IndigoBrush}" />
-                <TextBlock Text="Bắt đầu học từ vựng, ôn tập và theo dõi tiến độ của bạn tại WordUp." Style="{StaticResource MutedText}" TextAlignment="Center" Margin="0,12,0,20" />
+                <TextBlock Text="WordUp" FontSize="26" FontWeight="Bold" TextAlignment="Center" Foreground="{StaticResource IndigoBrush}" />
+                <TextBlock Text="Học từ vựng theo cách của bạn." FontSize="15" FontWeight="SemiBold" TextAlignment="Center" Margin="0,6,0,0" />
+                <TextBlock Text="Tạo bài học từ vựng, nhập từ bằng tệp, luyện flashcard và kiểm tra kết quả ngay trong một ứng dụng." Style="{StaticResource MutedText}" TextAlignment="Center" Margin="0,10,0,20" TextWrapping="Wrap" />
                 <Button Content="Đăng nhập để học ngay" Style="{StaticResource PrimaryButton}" Command="{Binding NavigateCommand}" CommandParameter="Login" />
                 <Button Content="Tạo tài khoản mới" Style="{StaticResource OutlineButton}" Margin="0,10,0,0" Command="{Binding NavigateCommand}" CommandParameter="Register" />
+            </StackPanel>
+        </Border>
+
+        <TextBlock Text="WordUp là gì?" Style="{StaticResource SectionTitleText}" Visibility="{Binding IsGuest, Converter={StaticResource BoolToVisibility}}" />
+        <Border Style="{StaticResource Card}" Padding="16" Visibility="{Binding IsGuest, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel>
+                <TextBlock Text="WordUp giúp bạn tự xây dựng kho từ vựng theo từng bài học, học bằng thẻ ghi nhớ, làm bài kiểm tra theo đúng bài đang học và theo dõi tiến độ sau mỗi lần ôn tập." Style="{StaticResource MutedText}" FontSize="13" TextWrapping="Wrap" Margin="0,0,0,14" />
+                <Border Background="#F7F4FC" CornerRadius="10" Padding="12" Margin="0,0,0,8">
+                    <TextBlock Text="Nhập nhanh từ vựng bằng .txt, .csv, .docx hoặc .xlsx." FontWeight="SemiBold" TextWrapping="Wrap" />
+                </Border>
+                <Border Background="#F7F4FC" CornerRadius="10" Padding="12" Margin="0,0,0,8">
+                    <TextBlock Text="Ôn tập bằng flashcard và phát âm IPA để ghi nhớ tốt hơn." FontWeight="SemiBold" TextWrapping="Wrap" />
+                </Border>
+                <Border Background="#F7F4FC" CornerRadius="10" Padding="12">
+                    <TextBlock Text="Kiểm tra cuối bài, xem đáp án đúng/sai và tổng thời gian làm bài." FontWeight="SemiBold" TextWrapping="Wrap" />
+                </Border>
             </StackPanel>
         </Border>
 
@@ -123,8 +140,8 @@
             </Grid>
         </Border>
 
-        <TextBlock Text="Bài học gần đây" Style="{StaticResource SectionTitleText}" />
-        <ItemsControl ItemsSource="{Binding RecentDecks}">
+        <TextBlock Text="Bài học gần đây" Style="{StaticResource SectionTitleText}" Visibility="{Binding IsAuthenticated, Converter={StaticResource BoolToVisibility}}" />
+        <ItemsControl ItemsSource="{Binding RecentDecks}" Visibility="{Binding IsAuthenticated, Converter={StaticResource BoolToVisibility}}">
             <ItemsControl.ItemContainerStyle>
                 <Style TargetType="ContentPresenter">
                     <Setter Property="HorizontalAlignment" Value="Stretch" />
