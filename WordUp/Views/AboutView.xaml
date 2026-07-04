@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <StackPanel Margin="22,18,22,22">
         <Grid>
-            <Button Content="Quay lại" Style="{StaticResource IconButton}" Width="70" FontSize="12" HorizontalAlignment="Left" Command="{Binding NavigateCommand}" CommandParameter="Account" />
+            <Button Content="x" Style="{StaticResource IconButton}" HorizontalAlignment="Left" Command="{Binding NavigateCommand}" CommandParameter="Account" />
             <TextBlock Text="Về chúng tôi" Style="{StaticResource PageTitleText}" FontSize="21" HorizontalAlignment="Center" />
         </Grid>
         <Border Style="{StaticResource Card}" Margin="0,22,0,14">

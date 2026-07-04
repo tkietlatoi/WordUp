@@ -156,6 +156,7 @@ public sealed class MainViewModel : ViewModelBase
         CancelProfileCommand = new RelayCommand(_ => LoadProfileEditor());
         ResetQuizCommand = new RelayCommand(_ => ResetQuiz());
         SaveSettingsCommand = new RelayCommand(_ => SaveSettings());
+        TestAudioCommand = new RelayCommand(_ => SpeakText("WordUp"));
         LogoutCommand = new RelayCommand(_ => IsLogoutDialogOpen = true);
         CancelLogoutCommand = new RelayCommand(_ => IsLogoutDialogOpen = false);
         ConfirmLogoutCommand = new RelayCommand(_ => Logout());
@@ -236,6 +237,7 @@ public sealed class MainViewModel : ViewModelBase
     public ICommand CancelProfileCommand { get; }
     public ICommand ResetQuizCommand { get; }
     public ICommand SaveSettingsCommand { get; }
+    public ICommand TestAudioCommand { get; }
     public ICommand LogoutCommand { get; }
     public ICommand CancelLogoutCommand { get; }
     public ICommand ConfirmLogoutCommand { get; }
@@ -535,8 +537,16 @@ public sealed class MainViewModel : ViewModelBase
     public double AudioVolume
     {
         get => audioVolume;
-        set => SetProperty(ref audioVolume, value);
+        set
+        {
+            if (SetProperty(ref audioVolume, Math.Clamp(value, 0, 100)))
+            {
+                OnPropertyChanged(nameof(AudioVolumePercent));
+            }
+        }
     }
+
+    public string AudioVolumePercent => $"{AudioVolume:0}%";
 
     public bool DailyReminders
     {
@@ -1013,6 +1023,7 @@ public sealed class MainViewModel : ViewModelBase
         IsLessonCompleteDialogOpen = false;
         IsAddLessonOpen = false;
         IsStudyFlashcardOpen = true;
+        AutoPlayCurrentWord();
     }
 
     private void ShowLessonList()
@@ -1718,6 +1729,7 @@ public sealed class MainViewModel : ViewModelBase
 
         CurrentWordIndex = (CurrentWordIndex + 1) % CurrentStudyWords.Count;
         IsFlashcardBackVisible = false;
+        AutoPlayCurrentWord();
     }
 
     private void PreviousWord()
@@ -1729,6 +1741,7 @@ public sealed class MainViewModel : ViewModelBase
 
         CurrentWordIndex = (CurrentWordIndex - 1 + CurrentStudyWords.Count) % CurrentStudyWords.Count;
         IsFlashcardBackVisible = false;
+        AutoPlayCurrentWord();
     }
 
     private void ToggleStudyAuto()
@@ -1811,6 +1824,7 @@ public sealed class MainViewModel : ViewModelBase
         CurrentWordIndex = 0;
         IsFlashcardBackVisible = false;
         IsLessonCompleteDialogOpen = false;
+        AutoPlayCurrentWord();
     }
 
     private void BackToLessonsFromComplete()
@@ -2568,15 +2582,39 @@ public sealed class MainViewModel : ViewModelBase
             return;
         }
 
+        SpeakText(word.Word);
+    }
+
+    private void AutoPlayCurrentWord()
+    {
+        if (AutoPlayAudio)
+        {
+            SpeakWord(CurrentWord);
+        }
+    }
+
+    private void SpeakText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return;
+        }
+
         try
         {
             speechVoice ??= Activator.CreateInstance(Type.GetTypeFromProgID("SAPI.SpVoice")!);
+            speechVoice?.GetType().InvokeMember(
+                "Volume",
+                System.Reflection.BindingFlags.SetProperty,
+                binder: null,
+                target: speechVoice,
+                args: [(int)Math.Round(Math.Clamp(AudioVolume, 0, 100))]);
             speechVoice?.GetType().InvokeMember(
                 "Speak",
                 System.Reflection.BindingFlags.InvokeMethod,
                 binder: null,
                 target: speechVoice,
-                args: [word.Word, 1]);
+                args: [text, 1]);
         }
         catch
         {

@@ -3,21 +3,44 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <StackPanel Margin="22,18,22,22">
         <Grid>
-            <Button Content="Quay lại" Style="{StaticResource IconButton}" Width="70" FontSize="12" HorizontalAlignment="Left" Command="{Binding NavigateCommand}" CommandParameter="Account" />
-            <TextBlock Text="Cài đặt" Style="{StaticResource PageTitleText}" FontSize="21" HorizontalAlignment="Center" />
+            <Button Content="x" Style="{StaticResource IconButton}" HorizontalAlignment="Left" Command="{Binding NavigateCommand}" CommandParameter="Account" />
+            <TextBlock Text="Cài đặt học tập" Style="{StaticResource PageTitleText}" FontSize="21" HorizontalAlignment="Center" />
         </Grid>
+
         <Border Style="{StaticResource Card}" Margin="0,22,0,14">
             <StackPanel>
-                <TextBlock Text="Âm thanh" FontWeight="Bold" />
-                <Slider Value="{Binding AudioVolume, Mode=TwoWay}" Minimum="0" Maximum="100" Margin="0,18,0,0" />
+                <TextBlock Text="Phát âm" Style="{StaticResource SectionTitleText}" Margin="0,0,0,8" />
+                <TextBlock Text="Âm lượng giọng đọc khi bấm loa trong thẻ học và Từ hôm nay." Style="{StaticResource MutedText}" Margin="0,0,0,14" />
+
+                <Grid Margin="0,0,0,10">
+                    <TextBlock Text="Âm lượng" FontWeight="SemiBold" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding AudioVolumePercent}" Foreground="{DynamicResource IndigoDarkBrush}" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                </Grid>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="92" />
+                    </Grid.ColumnDefinitions>
+                    <Slider Grid.Column="0"
+                            Value="{Binding AudioVolume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            Minimum="0"
+                            Maximum="100"
+                            TickFrequency="5"
+                            IsSnapToTickEnabled="False"
+                            VerticalAlignment="Center"
+                            Margin="0,0,12,0" />
+                    <Button Grid.Column="1" Content="Nghe thử" Style="{StaticResource OutlineButton}" Height="36" Padding="10,0" Command="{Binding TestAudioCommand}" />
+                </Grid>
             </StackPanel>
         </Border>
+
         <Border Style="{StaticResource Card}">
             <StackPanel>
-                <TextBlock Text="Hệ thống" FontWeight="Bold" Margin="0,0,0,16" />
-                <CheckBox Content="Nhắc học hằng ngày" IsChecked="{Binding DailyReminders, Mode=TwoWay}" Margin="0,0,0,16" />
-                <CheckBox Content="Tự động phát âm thanh" IsChecked="{Binding AutoPlayAudio, Mode=TwoWay}" Margin="0,0,0,16" />
-                <CheckBox Content="Chế độ ngoại tuyến" IsChecked="{Binding OfflineMode, Mode=TwoWay}" Margin="0,0,0,16" />
+                <TextBlock Text="Trải nghiệm học" Style="{StaticResource SectionTitleText}" Margin="0,0,0,12" />
+                <CheckBox Content="Nhắc học hằng ngày" IsChecked="{Binding DailyReminders, Mode=TwoWay}" Margin="0,0,0,14" />
+                <CheckBox Content="Tự động phát âm khi học thẻ" IsChecked="{Binding AutoPlayAudio, Mode=TwoWay}" Margin="0,0,0,14" />
+                <CheckBox Content="Không tra IPA trực tuyến" IsChecked="{Binding OfflineMode, Mode=TwoWay}" Margin="0,0,0,16" />
                 <TextBlock Text="{Binding SettingsMessage}" Style="{StaticResource MutedText}" Margin="0,0,0,12" />
                 <Button Content="Lưu cài đặt" Style="{StaticResource PrimaryButton}" Command="{Binding SaveSettingsCommand}" />
             </StackPanel>
