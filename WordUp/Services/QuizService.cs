@@ -16,7 +16,7 @@ public sealed class QuizService
     {
         var wordList = words
             .Where(word => !string.IsNullOrWhiteSpace(word.Word) && !string.IsNullOrWhiteSpace(word.Meaning))
-            .Take(Math.Clamp(questionLimit, 5, 30))
+            .Take(Math.Clamp(questionLimit, 10, 50))
             .ToList();
 
         if (wordList.Count == 0)

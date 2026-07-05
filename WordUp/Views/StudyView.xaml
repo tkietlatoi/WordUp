@@ -61,12 +61,18 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="LessonInlineButton" TargetType="Button" BasedOn="{StaticResource OutlineButton}">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Padding" Value="10,0" />
+        </Style>
     </UserControl.Resources>
 
     <Grid Margin="0">
         <StackPanel>
         <Grid Background="{DynamicResource SurfaceBrush}" Height="54">
-            <Button Content="X" Style="{StaticResource StudyCloseButton}" HorizontalAlignment="Left" Command="{Binding ShowLessonListCommand}" Visibility="{Binding IsStudyFlashcardOpen, Converter={StaticResource BoolToVisibility}}" />
             <TextBlock Text="{Binding StudyHeaderTitle}" Style="{StaticResource PageTitleText}" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
             <TextBlock Text="{Binding StudyProgressText}" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,18,0" Visibility="{Binding IsStudyFlashcardOpen, Converter={StaticResource BoolToVisibility}}" />
         </Grid>
@@ -135,9 +141,9 @@
                     <TextBox Style="{StaticResource TextInput}" Text="{Binding NewLessonType, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,12" />
                     <TextBlock Text="Âm thanh riêng" Style="{StaticResource MutedText}" />
                     <Grid Margin="0,5,0,12">
-                        <TextBox Style="{StaticResource TextInput}" Text="{Binding NewLessonAudioFileName, Mode=OneWay}" IsReadOnly="True" Margin="0,0,130,0" />
-                        <Button Content="Chọn" Style="{StaticResource PrimaryButton}" Width="62" Height="36" HorizontalAlignment="Right" Margin="0,0,64,0" Command="{Binding ImportLessonWordAudioCommand}" />
-                        <Button Content="Bỏ" Style="{StaticResource OutlineButton}" Width="56" Height="36" HorizontalAlignment="Right" Command="{Binding ClearLessonWordAudioCommand}" />
+                        <TextBox Style="{StaticResource TextInput}" Text="{Binding NewLessonAudioFileName, Mode=OneWay}" IsReadOnly="True" Width="220" HorizontalAlignment="Left" Margin="0,0,0,0" />
+                        <Button Content="Chọn" Style="{StaticResource LessonInlineButton}" Width="70" Height="36" HorizontalAlignment="Right" Margin="0,0,74,0" Command="{Binding ImportLessonWordAudioCommand}" />
+                        <Button Content="Bỏ" Style="{StaticResource LessonInlineButton}" Width="56" Height="36" HorizontalAlignment="Right" Command="{Binding ClearLessonWordAudioCommand}" />
                     </Grid>
                     <Button Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Command="{Binding AddLessonWordCommand}">
                         <TextBlock Text="{Binding LessonWordEditorButtonText}" />
@@ -150,8 +156,8 @@
                     <TextBlock Text="Nhập từ tệp" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,8" />
                     <TextBlock Text="Hỗ trợ .txt, .csv, .docx, .xlsx. Mỗi dòng/hàng cần ít nhất: từ, nghĩa. Ví dụ: teacher, giáo viên, noun hoặc teacher - giáo viên - noun." Style="{StaticResource MutedText}" Margin="0,0,0,12" TextWrapping="Wrap" />
                     <Grid>
-                        <TextBox Style="{StaticResource TextInput}" Text="{Binding NewLessonFilePath}" IsReadOnly="True" Margin="0,0,104,0" />
-                        <Button Content="Chọn tệp" Style="{StaticResource PrimaryButton}" Width="96" Height="36" HorizontalAlignment="Right" Command="{Binding ImportLessonFileCommand}" />
+                        <TextBox Style="{StaticResource TextInput}" Text="{Binding NewLessonFilePath}" IsReadOnly="True" Width="220" HorizontalAlignment="Left" Margin="0,0,0,0" />
+                        <Button Content="Chọn tệp" Style="{StaticResource LessonInlineButton}" Width="92" Height="36" HorizontalAlignment="Right" Command="{Binding ImportLessonFileCommand}" />
                     </Grid>
                 </StackPanel>
             </Border>

@@ -101,12 +101,16 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid Margin="22,18,22,22">
-        <StackPanel Visibility="{Binding IsQuizIntroVisible, Converter={StaticResource BoolToVisibility}}">
-            <Grid>
-                <Button Content="x" Style="{StaticResource IconButton}" HorizontalAlignment="Left" Command="{Binding SelectTabCommand}" CommandParameter="Dashboard" />
-                <TextBlock Text="Luyện tập" Style="{StaticResource PageTitleText}" FontSize="21" HorizontalAlignment="Center" />
-            </Grid>
+    <Grid Margin="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="54" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid Background="{DynamicResource SurfaceBrush}">
+            <TextBlock Text="Luyện tập" Style="{StaticResource PageTitleText}" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Grid>
+
+        <StackPanel Grid.Row="1" Margin="22,18,22,22" Visibility="{Binding IsQuizIntroVisible, Converter={StaticResource BoolToVisibility}}">
 
             <Grid Width="230" HorizontalAlignment="Center" Margin="0,18,0,16">
                 <Grid.RowDefinitions>
@@ -207,10 +211,8 @@
             </Border>
         </StackPanel>
 
-        <StackPanel Visibility="{Binding IsQuizInProgress, Converter={StaticResource BoolToVisibility}}">
+        <StackPanel Grid.Row="1" Margin="22,18,22,22" Visibility="{Binding IsQuizInProgress, Converter={StaticResource BoolToVisibility}}">
             <Grid>
-                <Button Content="x" Style="{StaticResource IconButton}" HorizontalAlignment="Left" Command="{Binding SelectTabCommand}" CommandParameter="Quiz" />
-                <TextBlock Text="Làm bài luyện tập" Style="{StaticResource PageTitleText}" FontSize="21" HorizontalAlignment="Center" />
                 <Button Content="Nộp" Style="{StaticResource PrimaryButton}" Width="76" Height="36" Padding="12,0" HorizontalAlignment="Right" Command="{Binding SubmitQuizCommand}" />
             </Grid>
 
@@ -238,7 +240,7 @@
             </UniformGrid>
         </StackPanel>
 
-        <Border Visibility="{Binding IsQuizSettingsOpen, Converter={StaticResource BoolToVisibility}}" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Panel.ZIndex="10">
+        <Border Grid.Row="1" Visibility="{Binding IsQuizSettingsOpen, Converter={StaticResource BoolToVisibility}}" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Panel.ZIndex="10">
             <Border Style="{StaticResource Card}" Padding="14" Width="310" MaxWidth="310" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel>
                     <Grid Margin="0,0,0,4">
@@ -257,21 +259,45 @@
                             <ColumnDefinition Width="44" />
                         </Grid.ColumnDefinitions>
                         <Button Content="-" Style="{StaticResource OutlineButton}" Width="40" Height="36" Padding="0" Command="{Binding DecreaseQuizQuestionLimitCommand}" />
-                        <TextBox Grid.Column="1" Style="{StaticResource TextInput}" Text="{Binding QuizQuestionLimit, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalContentAlignment="Center" FontSize="16" FontWeight="SemiBold" Margin="8,0" />
+                        <TextBox Grid.Column="1" Style="{StaticResource TextInput}" Text="{Binding QuizQuestionLimit, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" HorizontalContentAlignment="Center" FontSize="16" FontWeight="SemiBold" Margin="8,0" />
                         <Button Grid.Column="2" Content="+" Style="{StaticResource OutlineButton}" Width="40" Height="36" Padding="0" Command="{Binding IncreaseQuizQuestionLimitCommand}" />
                     </Grid>
+                    <TextBlock Text="Tối thiểu 10 từ." Style="{StaticResource MutedText}" Margin="0,-4,0,10" />
 
                     <TextBlock Text="Nguồn từ luyện tập" FontWeight="SemiBold" Margin="0,0,0,8" />
                     <RadioButton Content="Những từ đã học" GroupName="PracticeWordSource" Style="{StaticResource PracticeSourceRadio}" IsChecked="{Binding IsLearnedPracticeSource, Mode=OneWay}" Command="{Binding SelectPracticeWordSourceCommand}" CommandParameter="Learned" />
                     <RadioButton Content="Từ đã đánh dấu sao" GroupName="PracticeWordSource" Style="{StaticResource PracticeSourceRadio}" IsChecked="{Binding IsFavoritePracticeSource, Mode=OneWay}" Command="{Binding SelectPracticeWordSourceCommand}" CommandParameter="Favorite" />
                     <RadioButton Content="Tất cả các từ" GroupName="PracticeWordSource" Style="{StaticResource PracticeSourceRadio}" IsChecked="{Binding IsAllPracticeSource, Mode=OneWay}" Command="{Binding SelectPracticeWordSourceCommand}" CommandParameter="All" Margin="0,0,0,16" />
+                    <RadioButton Content="Trong bài học" GroupName="PracticeWordSource" Style="{StaticResource PracticeSourceRadio}" IsChecked="{Binding IsLessonPracticeSource, Mode=OneWay}" Command="{Binding SelectPracticeWordSourceCommand}" CommandParameter="Lesson" Margin="0,0,0,16" />
+
+                    <StackPanel Visibility="{Binding IsLessonPracticeSource, Converter={StaticResource BoolToVisibility}}" Margin="0,0,0,14">
+                        <TextBlock Text="Chọn bài học" FontWeight="SemiBold" Margin="0,0,0,8" />
+                        <Border Background="{DynamicResource HoverSurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="8" MaxHeight="170">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding Decks}">
+                                    <ItemsControl.ItemContainerStyle>
+                                        <Style TargetType="ContentPresenter">
+                                            <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                        </Style>
+                                    </ItemsControl.ItemContainerStyle>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Style="{StaticResource OutlineButton}" Height="38" Margin="0,0,0,8" HorizontalContentAlignment="Left" Command="{Binding DataContext.SelectPracticeLessonCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Id}">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                    </StackPanel>
 
                     <Button Content="Bắt đầu luyện tập" Style="{StaticResource PrimaryButton}" Height="36" HorizontalAlignment="Stretch" Command="{Binding StartPracticeCommand}" />
                 </StackPanel>
             </Border>
         </Border>
 
-        <Border Visibility="{Binding IsIncompleteQuizSubmitDialogOpen, Converter={StaticResource BoolToVisibility}}">
+        <Border Grid.Row="1" Visibility="{Binding IsIncompleteQuizSubmitDialogOpen, Converter={StaticResource BoolToVisibility}}">
             <Border Style="{StaticResource Card}" Padding="18" Width="340" MaxWidth="340" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <StackPanel>
                     <TextBlock Text="Chưa làm đủ câu" Style="{StaticResource SectionTitleText}" TextAlignment="Center" Margin="0,0,0,8" />

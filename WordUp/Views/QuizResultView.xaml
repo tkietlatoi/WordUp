@@ -18,11 +18,11 @@
 
         <TextBlock Text="Chi tiết câu hỏi" Style="{StaticResource SectionTitleText}" Margin="0,0,0,8" />
         <Border Style="{StaticResource Card}" Padding="10" Margin="0,0,0,18">
-            <ScrollViewer Height="260" VerticalScrollBarVisibility="Auto">
+            <ScrollViewer Height="260" VerticalScrollBarVisibility="Auto" Focusable="False">
                 <ItemsControl ItemsSource="{Binding QuizQuestions}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,10">
+                            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,10" Background="{DynamicResource SurfaceBrush}">
                                 <Grid>
                                     <TextBlock Text="{Binding StatusSymbol}" Width="30" Height="30" TextAlignment="Center" VerticalAlignment="Top" FontWeight="Bold" Foreground="{Binding StatusBrush}" />
                                     <StackPanel Margin="40,0,0,0">
@@ -38,10 +38,9 @@
             </ScrollViewer>
         </Border>
 
-        <UniformGrid Columns="3">
+        <UniformGrid Columns="2">
             <Button Content="Làm lại" Style="{StaticResource OutlineButton}" Margin="0,0,6,0" Command="{Binding ResetQuizCommand}" />
-            <Button Content="Xem thống kê" Style="{StaticResource OutlineButton}" Margin="6,0" Command="{Binding ViewPracticeStatsCommand}" />
-            <Button Content="Hoàn thành" Style="{StaticResource PrimaryButton}" Margin="6,0,0,0" Command="{Binding FinishQuizResultCommand}" />
+            <Button Content="Quay lại bài học" Style="{StaticResource PrimaryButton}" Margin="6,0,0,0" Command="{Binding FinishQuizResultCommand}" />
         </UniformGrid>
     </StackPanel>
 </UserControl>

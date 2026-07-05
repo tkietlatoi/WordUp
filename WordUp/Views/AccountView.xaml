@@ -54,7 +54,14 @@
         </Style>
     </UserControl.Resources>
     <Grid>
-    <StackPanel Margin="22,18,22,22">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="54" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <Grid Background="{DynamicResource SurfaceBrush}">
+            <TextBlock Text="Cá nhân" Style="{StaticResource PageTitleText}" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Grid>
+    <StackPanel Grid.Row="1" Margin="22,18,22,22">
         <Grid>
             <Button Style="{StaticResource AccountAvatarButton}" HorizontalAlignment="Left" Command="{Binding OpenAvatarDialogCommand}">
                 <Grid Width="82" Height="82">
@@ -71,7 +78,6 @@
                 <TextBlock Text="{Binding User.FullName}" Style="{StaticResource PageTitleText}" FontSize="26" TextWrapping="Wrap" />
                 <TextBlock Text="{Binding DashboardSubtitle}" Style="{StaticResource MutedText}" FontSize="13" Margin="0,6,0,0" TextWrapping="Wrap" />
             </StackPanel>
-            <Button Content="x" Style="{StaticResource IconButton}" HorizontalAlignment="Right" Command="{Binding SelectTabCommand}" CommandParameter="Dashboard" />
         </Grid>
         <TextBlock Text="QUẢN LÝ TÀI KHOẢN" Foreground="{DynamicResource IndigoDarkBrush}" FontSize="17" FontWeight="SemiBold" TextAlignment="Center" Margin="0,28,0,18" />
         <Button Content="✎  Sửa hồ sơ  >" Style="{StaticResource OutlineButton}" HorizontalContentAlignment="Left" Margin="0,0,0,10" Command="{Binding NavigateCommand}" CommandParameter="Profile" />
@@ -97,7 +103,7 @@
         <Button Content="↪  Đăng xuất" Style="{StaticResource OutlineButton}" Command="{Binding LogoutCommand}" />
     </StackPanel>
 
-    <Border Background="#66000000" Visibility="{Binding IsDeleteAccountDialogOpen, Converter={StaticResource BoolToVisibility}}">
+    <Border Grid.Row="1" Background="#66000000" Visibility="{Binding IsDeleteAccountDialogOpen, Converter={StaticResource BoolToVisibility}}">
         <Border Style="{StaticResource Card}" Padding="18" Width="320" HorizontalAlignment="Center" VerticalAlignment="Center">
             <StackPanel>
                 <TextBlock Text="Xóa tài khoản?" Style="{StaticResource SectionTitleText}" TextAlignment="Center" Margin="0,0,0,8" />
@@ -110,7 +116,7 @@
         </Border>
     </Border>
 
-    <Border Background="#66000000" Visibility="{Binding IsAvatarDialogOpen, Converter={StaticResource BoolToVisibility}}">
+    <Border Grid.Row="1" Background="#66000000" Visibility="{Binding IsAvatarDialogOpen, Converter={StaticResource BoolToVisibility}}">
         <Border Style="{StaticResource Card}" Padding="18" Width="320" HorizontalAlignment="Center" VerticalAlignment="Center">
             <StackPanel>
                 <TextBlock Text="Ảnh đại diện" Style="{StaticResource SectionTitleText}" TextAlignment="Center" Margin="0,0,0,12" />

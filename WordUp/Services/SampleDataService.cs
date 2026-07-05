@@ -7,7 +7,7 @@ public sealed class SampleDataService
     public UserProfile User { get; } = new()
     {
         FullName = "Nguyễn Văn A",
-        Email = "student@university.edu",
+        Email = "",
         Phone = "+84 987654321",
         Level = "Học giả",
         Note = "Mục tiêu hôm nay: ôn lại từ vựng và hoàn thành bài học gần nhất."

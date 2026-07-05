@@ -62,6 +62,8 @@ public sealed class MainViewModel : ViewModelBase
     private string selectedTab = "Dashboard";
     private string lessonSearchText = "";
     private Deck? selectedStudyDeck;
+    private IReadOnlyList<VocabularyWord> lastQuizSourceWords = [];
+    private int lastQuizQuestionLimit = 20;
     private Deck? editingLesson;
     private Deck? pendingDeleteLesson;
     private VocabularyWord? pendingDeleteLessonWord;
@@ -88,14 +90,15 @@ public sealed class MainViewModel : ViewModelBase
     private string editorVietnameseMeaning = "";
     private string editorExample = "";
     private string wordManagerMessage = "Chọn một dòng để sửa, hoặc nhập thông tin để thêm từ mới.";
-    private string loginEmail = "student@university.edu";
+    private string loginEmail = "";
     private string loginPassword = "";
     private string registerFullName = "";
     private string registerEmail = "";
     private string registerPhone = "";
     private string registerPassword = "";
     private string registerConfirmPassword = "";
-    private string forgotPasswordEmail = "student@university.edu";
+    private string forgotPasswordEmail = "";
+    private string practiceSelectedLessonId = "";
     private string forgotPasswordNewPassword = "";
     private string forgotPasswordConfirmPassword = "";
     private string forgotPasswordAccountEmail = "";
@@ -172,6 +175,7 @@ public sealed class MainViewModel : ViewModelBase
         CloseQuizSettingsCommand = new RelayCommand(_ => IsQuizSettingsOpen = false);
         SelectPracticeTabCommand = new RelayCommand(parameter => SelectPracticeTab(parameter?.ToString() ?? "Practice"));
         SelectPracticeWordSourceCommand = new RelayCommand(parameter => SelectPracticeWordSource(parameter?.ToString() ?? "Learned"));
+        SelectPracticeLessonCommand = new RelayCommand(parameter => SelectPracticeLesson(parameter?.ToString() ?? ""));
         IncreaseQuizQuestionLimitCommand = new RelayCommand(_ => QuizQuestionLimit += 1);
         DecreaseQuizQuestionLimitCommand = new RelayCommand(_ => QuizQuestionLimit -= 1);
         SelectQuizAnswerCommand = new RelayCommand(parameter => SelectQuizAnswer(parameter));
@@ -223,6 +227,7 @@ public sealed class MainViewModel : ViewModelBase
             QuizElapsedTime = QuizElapsedTime.Add(TimeSpan.FromSeconds(1));
         };
 
+        EnsurePracticeLessonSelection();
         LoadProfileEditor();
         RefreshTodayWord();
         ApplyTheme();
@@ -268,6 +273,7 @@ public sealed class MainViewModel : ViewModelBase
     public ICommand CloseQuizSettingsCommand { get; }
     public ICommand SelectPracticeTabCommand { get; }
     public ICommand SelectPracticeWordSourceCommand { get; }
+    public ICommand SelectPracticeLessonCommand { get; }
     public ICommand IncreaseQuizQuestionLimitCommand { get; }
     public ICommand DecreaseQuizQuestionLimitCommand { get; }
     public ICommand SelectQuizAnswerCommand { get; }
@@ -935,14 +941,16 @@ public sealed class MainViewModel : ViewModelBase
         get => quizQuestionLimit;
         set
         {
-            if (SetProperty(ref quizQuestionLimit, Math.Clamp(value, 5, 30)))
+            if (SetProperty(ref quizQuestionLimit, Math.Clamp(value, 10, 50)))
             {
                 OnPropertyChanged(nameof(QuizQuestionLimitText));
+                OnPropertyChanged(nameof(QuizQuestionLimitHintText));
             }
         }
     }
 
     public string QuizQuestionLimitText => $"{QuizQuestionLimit} từ";
+    public string QuizQuestionLimitHintText => "Tối thiểu 10 từ.";
 
     public string PracticeTab
     {
@@ -970,7 +978,9 @@ public sealed class MainViewModel : ViewModelBase
                 OnPropertyChanged(nameof(IsLearnedPracticeSource));
                 OnPropertyChanged(nameof(IsFavoritePracticeSource));
                 OnPropertyChanged(nameof(IsAllPracticeSource));
+                OnPropertyChanged(nameof(IsLessonPracticeSource));
                 OnPropertyChanged(nameof(PracticeWordSourceText));
+                OnPropertyChanged(nameof(SelectedPracticeLessonName));
                 OnPropertyChanged(nameof(LearnedPracticeSourceBorder));
                 OnPropertyChanged(nameof(FavoritePracticeSourceBorder));
                 OnPropertyChanged(nameof(AllPracticeSourceBorder));
@@ -1017,8 +1027,38 @@ public sealed class MainViewModel : ViewModelBase
     {
         "Favorite" => "Từ đã đánh dấu sao",
         "All" => "Tất cả các từ",
+        "Lesson" => SelectedPracticeLessonName,
         _ => "Những từ đã học"
     };
+
+    public bool IsLessonPracticeSource
+    {
+        get => PracticeWordSource == "Lesson";
+        set
+        {
+            if (value)
+            {
+                PracticeWordSource = "Lesson";
+            }
+        }
+    }
+
+    public string PracticeSelectedLessonId
+    {
+        get => practiceSelectedLessonId;
+        set
+        {
+            if (SetProperty(ref practiceSelectedLessonId, value))
+            {
+                OnPropertyChanged(nameof(SelectedPracticeLesson));
+                OnPropertyChanged(nameof(SelectedPracticeLessonName));
+                OnPropertyChanged(nameof(PracticeWordSourceText));
+            }
+        }
+    }
+
+    public Deck? SelectedPracticeLesson => Decks.FirstOrDefault(deck => deck.Id == PracticeSelectedLessonId);
+    public string SelectedPracticeLessonName => SelectedPracticeLesson?.Name ?? "Trong bài học";
 
     public int PracticeSessionCount
     {
@@ -2210,7 +2250,7 @@ public sealed class MainViewModel : ViewModelBase
             : Words.Where(word => word.LessonId == SelectedStudyDeck.Id).ToList();
 
         isPracticeQuiz = false;
-        ResetQuiz(lessonQuizWords);
+        ResetQuiz(lessonQuizWords, Math.Min(50, lessonQuizWords.Count));
     }
 
     private void ShowPracticeIntro()
@@ -2228,7 +2268,7 @@ public sealed class MainViewModel : ViewModelBase
     {
         IsQuizSettingsOpen = false;
         isPracticeQuiz = true;
-        ResetQuiz(GetPracticeWords());
+        ResetQuiz(GetPracticeWords().ToList(), QuizQuestionLimit);
     }
 
     private void SelectPracticeTab(string tab)
@@ -2238,7 +2278,19 @@ public sealed class MainViewModel : ViewModelBase
 
     private void SelectPracticeWordSource(string source)
     {
-        PracticeWordSource = source is "Favorite" or "All" ? source : "Learned";
+        PracticeWordSource = source is "Favorite" or "All" or "Lesson" ? source : "Learned";
+
+        if (PracticeWordSource == "Lesson")
+        {
+            EnsurePracticeLessonSelection();
+        }
+    }
+
+    private void SelectPracticeLesson(string lessonId)
+    {
+        PracticeSelectedLessonId = lessonId;
+        PracticeWordSource = "Lesson";
+        EnsurePracticeLessonSelection();
     }
 
     private void FinishQuizResult()
@@ -2269,6 +2321,8 @@ public sealed class MainViewModel : ViewModelBase
         {
             "Favorite" => Words.Where(word => word.IsFavorite),
             "All" => Words,
+            "Lesson" when !string.IsNullOrWhiteSpace(PracticeSelectedLessonId) =>
+                Words.Where(word => word.LessonId == PracticeSelectedLessonId),
             _ => Words.Where(IsLearnedOrRemembered)
         };
 
@@ -2783,14 +2837,24 @@ public sealed class MainViewModel : ViewModelBase
         SelectTab("Dashboard");
     }
 
-    private void ResetQuiz(IEnumerable<VocabularyWord>? sourceWords = null)
+    private void ResetQuiz(IEnumerable<VocabularyWord>? sourceWords = null, int? questionLimit = null)
     {
         if (!RequireAuthentication("Quiz"))
         {
             return;
         }
 
-        RefreshQuizQuestions(sourceWords);
+        var quizSourceWords = (sourceWords ?? lastQuizSourceWords).ToList();
+        if (quizSourceWords.Count == 0)
+        {
+            quizSourceWords = Words.ToList();
+        }
+
+        var effectiveQuestionLimit = Math.Clamp(questionLimit ?? lastQuizQuestionLimit, 10, 50);
+        lastQuizSourceWords = quizSourceWords;
+        lastQuizQuestionLimit = effectiveQuestionLimit;
+
+        RefreshQuizQuestions(quizSourceWords, effectiveQuestionLimit);
 
         foreach (var question in QuizQuestions)
         {
@@ -3039,10 +3103,11 @@ public sealed class MainViewModel : ViewModelBase
         SaveAppState();
     }
 
-    private void RefreshQuizQuestions(IEnumerable<VocabularyWord>? sourceWords = null)
+    private void RefreshQuizQuestions(IEnumerable<VocabularyWord>? sourceWords = null, int? questionLimit = null)
     {
         QuizQuestions.Clear();
-        foreach (var question in quizService.CreateQuestions(sourceWords ?? Words, QuizQuestionLimit))
+        var limit = Math.Clamp(questionLimit ?? QuizQuestionLimit, 10, 50);
+        foreach (var question in quizService.CreateQuestions(sourceWords ?? Words, limit))
         {
             QuizQuestions.Add(question);
         }
@@ -3443,8 +3508,11 @@ public sealed class MainViewModel : ViewModelBase
             SelectedStudyDeck = Decks.FirstOrDefault();
             CurrentWordIndex = 0;
             ClearWordEditor();
+            lastQuizSourceWords = [];
+            lastQuizQuestionLimit = QuizQuestionLimit;
             RefreshQuizQuestions();
             RefreshTodayWord();
+            EnsurePracticeLessonSelection();
             LoadProfileEditor();
             OnPropertyChanged(nameof(DashboardGreeting));
             OnPropertyChanged(nameof(DashboardSubtitle));
@@ -3479,6 +3547,9 @@ public sealed class MainViewModel : ViewModelBase
         Decks.Clear();
         Words.Clear();
         PracticeSessionCount = 0;
+        PracticeSelectedLessonId = "";
+        lastQuizSourceWords = [];
+        lastQuizQuestionLimit = QuizQuestionLimit;
         SelectedStudyDeck = null;
         CurrentWordIndex = 0;
         ClearWordEditor();
@@ -3508,5 +3579,21 @@ public sealed class MainViewModel : ViewModelBase
                 PracticeSessionCount = PracticeSessionCount
             }
         });
+    }
+
+    private void EnsurePracticeLessonSelection()
+    {
+        if (Decks.Count == 0)
+        {
+            PracticeSelectedLessonId = "";
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(PracticeSelectedLessonId) && Decks.Any(deck => deck.Id == PracticeSelectedLessonId))
+        {
+            return;
+        }
+
+        PracticeSelectedLessonId = Decks.First().Id;
     }
 }
