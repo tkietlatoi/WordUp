@@ -63,6 +63,8 @@ public sealed class MainViewModel : ViewModelBase
     private Deck? selectedStudyDeck;
     private Deck? editingLesson;
     private Deck? pendingDeleteLesson;
+    private VocabularyWord? pendingDeleteLessonWord;
+    private bool isDeleteLessonWordDialogOpen;
     private string newLessonName = "";
     private string newLessonWord = "";
     private string newLessonIpa = "";
@@ -74,6 +76,8 @@ public sealed class MainViewModel : ViewModelBase
     private string lessonWordSearchText = "";
     private VocabularyWord? editingLessonWord;
     private VocabularyWord? selectedWord;
+    private VocabularyWord? pendingDeleteWord;
+    private bool isDeleteWordDialogOpen;
     private string editorWord = "";
     private string editorIpa = "";
     private bool editorIpaWasAutoFilled;
@@ -143,6 +147,8 @@ public sealed class MainViewModel : ViewModelBase
         ConfirmDeleteLessonCommand = new RelayCommand(_ => ConfirmDeleteLesson());
         EditLessonWordCommand = new RelayCommand(parameter => EditLessonWord(parameter));
         DeleteLessonWordCommand = new RelayCommand(parameter => DeleteLessonWord(parameter));
+        CancelDeleteLessonWordCommand = new RelayCommand(_ => CancelDeleteLessonWord());
+        ConfirmDeleteLessonWordCommand = new RelayCommand(_ => ConfirmDeleteLessonWord());
         AddLessonWordCommand = new RelayCommand(_ => AddLessonWord());
         ImportLessonFileCommand = new RelayCommand(_ => ImportLessonFile());
         SaveNewLessonCommand = new RelayCommand(_ => SaveNewLesson());
@@ -173,7 +179,9 @@ public sealed class MainViewModel : ViewModelBase
         ViewPracticeStatsCommand = new RelayCommand(_ => ViewPracticeStats());
         NewWordCommand = new RelayCommand(_ => ClearWordEditor());
         SaveWordCommand = new RelayCommand(_ => SaveWord());
-        DeleteWordCommand = new RelayCommand(_ => DeleteSelectedWord());
+        DeleteWordCommand = new RelayCommand(_ => OpenDeleteWordDialog());
+        CancelDeleteWordCommand = new RelayCommand(_ => CancelDeleteWord());
+        ConfirmDeleteWordCommand = new RelayCommand(_ => ConfirmDeleteWord());
         LoginCommand = new RelayCommand(_ => Login());
         RegisterCommand = new RelayCommand(_ => Register());
         ForgotPasswordCommand = new RelayCommand(_ => HandleForgotPassword());
@@ -233,6 +241,8 @@ public sealed class MainViewModel : ViewModelBase
     public ICommand ConfirmDeleteLessonCommand { get; }
     public ICommand EditLessonWordCommand { get; }
     public ICommand DeleteLessonWordCommand { get; }
+    public ICommand CancelDeleteLessonWordCommand { get; }
+    public ICommand ConfirmDeleteLessonWordCommand { get; }
     public ICommand AddLessonWordCommand { get; }
     public ICommand ImportLessonFileCommand { get; }
     public ICommand SaveNewLessonCommand { get; }
@@ -264,6 +274,8 @@ public sealed class MainViewModel : ViewModelBase
     public ICommand NewWordCommand { get; }
     public ICommand SaveWordCommand { get; }
     public ICommand DeleteWordCommand { get; }
+    public ICommand CancelDeleteWordCommand { get; }
+    public ICommand ConfirmDeleteWordCommand { get; }
     public ICommand LoginCommand { get; }
     public ICommand RegisterCommand { get; }
     public ICommand ForgotPasswordCommand { get; }
@@ -425,6 +437,16 @@ public sealed class MainViewModel : ViewModelBase
         get => wordManagerMessage;
         set => SetProperty(ref wordManagerMessage, value);
     }
+
+    public bool IsDeleteWordDialogOpen
+    {
+        get => isDeleteWordDialogOpen;
+        set => SetProperty(ref isDeleteWordDialogOpen, value);
+    }
+
+    public string DeleteWordDialogText => pendingDeleteWord is null
+        ? "Chọn một từ trước khi xóa."
+        : $"Bạn có chắc muốn xóa từ \"{pendingDeleteWord.Word}\" không? Thao tác này không thể hoàn tác.";
 
     public string LoginEmail
     {
@@ -765,6 +787,16 @@ public sealed class MainViewModel : ViewModelBase
         get => newLessonMessage;
         set => SetProperty(ref newLessonMessage, value);
     }
+
+    public bool IsDeleteLessonWordDialogOpen
+    {
+        get => isDeleteLessonWordDialogOpen;
+        set => SetProperty(ref isDeleteLessonWordDialogOpen, value);
+    }
+
+    public string DeleteLessonWordDialogText => pendingDeleteLessonWord is null
+        ? "Chọn một từ trước khi xóa."
+        : $"Bạn có chắc muốn xóa từ \"{pendingDeleteLessonWord.Word}\" khỏi bài học này không?";
 
     public string LessonWordSearchText
     {
@@ -1388,8 +1420,32 @@ public sealed class MainViewModel : ViewModelBase
             return;
         }
 
+        pendingDeleteLessonWord = word;
+        IsDeleteLessonWordDialogOpen = true;
+        OnPropertyChanged(nameof(DeleteLessonWordDialogText));
+    }
+
+    private void CancelDeleteLessonWord()
+    {
+        pendingDeleteLessonWord = null;
+        IsDeleteLessonWordDialogOpen = false;
+        OnPropertyChanged(nameof(DeleteLessonWordDialogText));
+    }
+
+    private void ConfirmDeleteLessonWord()
+    {
+        if (pendingDeleteLessonWord is null)
+        {
+            CancelDeleteLessonWord();
+            return;
+        }
+
+        var word = pendingDeleteLessonWord;
         NewLessonWords.Remove(word);
+        pendingDeleteLessonWord = null;
+        IsDeleteLessonWordDialogOpen = false;
         OnPropertyChanged(nameof(FilteredNewLessonWords));
+        OnPropertyChanged(nameof(DeleteLessonWordDialogText));
         if (ReferenceEquals(editingLessonWord, word))
         {
             ClearLessonWordEditor();
@@ -2452,6 +2508,8 @@ public sealed class MainViewModel : ViewModelBase
         User.Email = ProfileEmail.Trim();
         User.Phone = ProfilePhone.Trim();
         User.Note = ProfileNote.Trim();
+        OnPropertyChanged(nameof(User));
+        OnPropertyChanged(nameof(DashboardGreeting));
         OnPropertyChanged(nameof(DashboardSubtitle));
         ProfileMessage = "Đã lưu thông tin hồ sơ.";
         SaveAppState();
@@ -2797,7 +2855,7 @@ public sealed class MainViewModel : ViewModelBase
         SaveAppState();
     }
 
-    private void DeleteSelectedWord()
+    private void OpenDeleteWordDialog()
     {
         if (SelectedWord is null)
         {
@@ -2805,12 +2863,35 @@ public sealed class MainViewModel : ViewModelBase
             return;
         }
 
-        var deletedWord = SelectedWord.Word;
-        var deletedIndex = Words.IndexOf(SelectedWord);
-        Words.Remove(SelectedWord);
+        pendingDeleteWord = SelectedWord;
+        OnPropertyChanged(nameof(DeleteWordDialogText));
+        IsDeleteWordDialogOpen = true;
+    }
+
+    private void CancelDeleteWord()
+    {
+        pendingDeleteWord = null;
+        IsDeleteWordDialogOpen = false;
+        OnPropertyChanged(nameof(DeleteWordDialogText));
+    }
+
+    private void ConfirmDeleteWord()
+    {
+        if (pendingDeleteWord is null)
+        {
+            CancelDeleteWord();
+            return;
+        }
+
+        var deletedWord = pendingDeleteWord.Word;
+        var deletedIndex = Words.IndexOf(pendingDeleteWord);
+        Words.Remove(pendingDeleteWord);
+        pendingDeleteWord = null;
+        IsDeleteWordDialogOpen = false;
         CurrentWordIndex = Words.Count == 0 ? 0 : Math.Min(CurrentWordIndex, Words.Count - 1);
         ClearWordEditor();
         WordManagerMessage = $"Đã xóa {deletedWord}.";
+        OnPropertyChanged(nameof(DeleteWordDialogText));
 
         if (deletedIndex >= 0)
         {

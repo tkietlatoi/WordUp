@@ -261,5 +261,18 @@
                 </StackPanel>
             </Border>
         </Border>
+
+        <Border Visibility="{Binding IsDeleteLessonWordDialogOpen, Converter={StaticResource BoolToVisibility}}" Background="Transparent" Panel.ZIndex="10">
+            <Border Style="{StaticResource Card}" Padding="18" Width="320" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel>
+                    <TextBlock Text="Xóa từ khỏi bài học" Style="{StaticResource SectionTitleText}" TextAlignment="Center" Margin="0,0,0,8" />
+                    <TextBlock Text="{Binding DeleteLessonWordDialogText}" Style="{StaticResource MutedText}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,16" />
+                    <UniformGrid Columns="2">
+                        <Button Content="Hủy" Style="{StaticResource OutlineButton}" Margin="0,0,6,0" Command="{Binding CancelDeleteLessonWordCommand}" />
+                        <Button Content="Xóa" Style="{StaticResource DangerButton}" Margin="6,0,0,0" Command="{Binding ConfirmDeleteLessonWordCommand}" />
+                    </UniformGrid>
+                </StackPanel>
+            </Border>
+        </Border>
     </Grid>
 </UserControl>
