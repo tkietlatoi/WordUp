@@ -919,9 +919,41 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
-    public bool IsLearnedPracticeSource => PracticeWordSource == "Learned";
-    public bool IsFavoritePracticeSource => PracticeWordSource == "Favorite";
-    public bool IsAllPracticeSource => PracticeWordSource == "All";
+    public bool IsLearnedPracticeSource
+    {
+        get => PracticeWordSource == "Learned";
+        set
+        {
+            if (value)
+            {
+                PracticeWordSource = "Learned";
+            }
+        }
+    }
+
+    public bool IsFavoritePracticeSource
+    {
+        get => PracticeWordSource == "Favorite";
+        set
+        {
+            if (value)
+            {
+                PracticeWordSource = "Favorite";
+            }
+        }
+    }
+
+    public bool IsAllPracticeSource
+    {
+        get => PracticeWordSource == "All";
+        set
+        {
+            if (value)
+            {
+                PracticeWordSource = "All";
+            }
+        }
+    }
     public string PracticeWordSourceText => PracticeWordSource switch
     {
         "Favorite" => "Từ đã đánh dấu sao",
@@ -2035,6 +2067,7 @@ public sealed class MainViewModel : ViewModelBase
 
     private void StartPractice()
     {
+        IsQuizSettingsOpen = false;
         isPracticeQuiz = true;
         ResetQuiz(GetPracticeWords());
     }
