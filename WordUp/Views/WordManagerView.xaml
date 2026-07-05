@@ -39,9 +39,7 @@
                     <TextBlock Text="Nghĩa tiếng Anh" Style="{StaticResource MutedText}" />
                     <TextBox Style="{StaticResource TextInput}" Text="{Binding EditorMeaning, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,10" />
                     <TextBlock Text="Nghĩa tiếng Việt" Style="{StaticResource MutedText}" />
-                    <TextBox Style="{StaticResource TextInput}" Text="{Binding EditorVietnameseMeaning, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,10" />
-                    <TextBlock Text="Ví dụ" Style="{StaticResource MutedText}" />
-                    <TextBox Style="{StaticResource TextInput}" Text="{Binding EditorExample, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,12" />
+                    <TextBox Style="{StaticResource TextInput}" Text="{Binding EditorVietnameseMeaning, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,12" />
                     <TextBlock Text="{Binding WordManagerMessage}" Style="{StaticResource MutedText}" Margin="0,0,0,12" />
                     <UniformGrid Columns="3">
                         <Button Content="Xóa" Style="{StaticResource DangerButton}" Margin="0,0,8,0" Command="{Binding DeleteWordCommand}" />

@@ -60,6 +60,71 @@ public sealed class LocalStorageService
         transaction.Commit();
     }
 
+    public void SavePracticeSession(
+        string accountEmail,
+        TimeSpan duration,
+        string wordSource,
+        IReadOnlyCollection<QuizQuestion> questions)
+    {
+        if (string.IsNullOrWhiteSpace(accountEmail) || questions.Count == 0)
+        {
+            return;
+        }
+
+        InitializeDatabase();
+
+        var completedAt = DateTime.Now;
+        var startedAt = completedAt.Subtract(duration);
+
+        using var connection = OpenConnection();
+        using var transaction = connection.BeginTransaction();
+
+        using var sessionCommand = connection.CreateCommand();
+        sessionCommand.Transaction = transaction;
+        sessionCommand.CommandText = """
+            INSERT INTO practice_sessions (
+                account_email, started_at, completed_at, duration_seconds,
+                total_questions, correct_answers, word_source)
+            VALUES (
+                $accountEmail, $startedAt, $completedAt, $durationSeconds,
+                $totalQuestions, $correctAnswers, $wordSource);
+            SELECT last_insert_rowid();
+            """;
+        sessionCommand.Parameters.AddWithValue("$accountEmail", accountEmail.Trim());
+        sessionCommand.Parameters.AddWithValue("$startedAt", FormatDateTime(startedAt));
+        sessionCommand.Parameters.AddWithValue("$completedAt", FormatDateTime(completedAt));
+        sessionCommand.Parameters.AddWithValue("$durationSeconds", (int)Math.Round(duration.TotalSeconds));
+        sessionCommand.Parameters.AddWithValue("$totalQuestions", questions.Count);
+        sessionCommand.Parameters.AddWithValue("$correctAnswers", questions.Count(question => question.IsCorrect));
+        sessionCommand.Parameters.AddWithValue("$wordSource", wordSource);
+
+        var sessionId = Convert.ToInt64(sessionCommand.ExecuteScalar());
+
+        foreach (var question in questions)
+        {
+            using var answerCommand = connection.CreateCommand();
+            answerCommand.Transaction = transaction;
+            answerCommand.CommandText = """
+                INSERT INTO practice_answers (
+                    session_id, lesson_id, word, selected_choice, correct_choice,
+                    is_correct, answered_at)
+                VALUES (
+                    $sessionId, $lessonId, $word, $selectedChoice, $correctChoice,
+                    $isCorrect, $answeredAt);
+                """;
+            answerCommand.Parameters.AddWithValue("$sessionId", sessionId);
+            answerCommand.Parameters.AddWithValue("$lessonId", question.SourceWord?.LessonId ?? "");
+            answerCommand.Parameters.AddWithValue("$word", question.Term);
+            answerCommand.Parameters.AddWithValue("$selectedChoice", question.SelectedChoice);
+            answerCommand.Parameters.AddWithValue("$correctChoice", question.CorrectChoice);
+            answerCommand.Parameters.AddWithValue("$isCorrect", question.IsCorrect ? 1 : 0);
+            answerCommand.Parameters.AddWithValue("$answeredAt", FormatDateTime(completedAt));
+            answerCommand.ExecuteNonQuery();
+        }
+
+        transaction.Commit();
+    }
+
     public bool RegisterAccount(UserProfile user, string password)
     {
         InitializeDatabase();
@@ -178,7 +243,7 @@ public sealed class LocalStorageService
         using var connection = OpenConnection();
         using var transaction = connection.BeginTransaction();
 
-        foreach (var table in new[] { "lesson_words", "lessons", "settings", "accounts" })
+        foreach (var table in new[] { "practice_answers", "practice_sessions", "lesson_words", "lessons", "settings", "accounts" })
         {
             using var command = connection.CreateCommand();
             command.Transaction = transaction;
@@ -198,7 +263,7 @@ public sealed class LocalStorageService
         }
 
         using var connection = OpenConnection();
-        ResetLegacySchemaIfNeeded(connection);
+        MigrateLegacySharedSchema(connection);
 
         using var command = connection.CreateCommand();
         command.CommandText = """
@@ -235,18 +300,36 @@ public sealed class LocalStorageService
                 type TEXT NOT NULL DEFAULT '',
                 meaning TEXT NOT NULL,
                 vietnamese_meaning TEXT NOT NULL DEFAULT '',
-                example TEXT NOT NULL DEFAULT '',
+                audio_path TEXT NOT NULL DEFAULT '',
+                FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS word_progress (
+                lesson_word_id INTEGER PRIMARY KEY,
                 mastery_level INTEGER NOT NULL DEFAULT 0,
                 review_count INTEGER NOT NULL DEFAULT 0,
+                last_reviewed_at TEXT NULL,
+                next_review_date TEXT NOT NULL,
+                FOREIGN KEY (lesson_word_id) REFERENCES lesson_words(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS word_practice_stats (
+                lesson_word_id INTEGER PRIMARY KEY,
                 correct_quiz_count INTEGER NOT NULL DEFAULT 0,
                 incorrect_quiz_count INTEGER NOT NULL DEFAULT 0,
                 practice_correct_quiz_count INTEGER NOT NULL DEFAULT 0,
                 practice_incorrect_quiz_count INTEGER NOT NULL DEFAULT 0,
-                is_favorite INTEGER NOT NULL DEFAULT 0,
-                last_reviewed_at TEXT NULL,
                 last_practice_at TEXT NULL,
-                next_review_date TEXT NOT NULL,
-                FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
+                FOREIGN KEY (lesson_word_id) REFERENCES lesson_words(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS favorites (
+                account_email TEXT NOT NULL COLLATE NOCASE,
+                lesson_word_id INTEGER NOT NULL,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (account_email, lesson_word_id),
+                FOREIGN KEY (account_email) REFERENCES accounts(email) ON DELETE CASCADE,
+                FOREIGN KEY (lesson_word_id) REFERENCES lesson_words(id) ON DELETE CASCADE
             );
 
             CREATE TABLE IF NOT EXISTS settings (
@@ -260,39 +343,124 @@ public sealed class LocalStorageService
                 FOREIGN KEY (account_email) REFERENCES accounts(email) ON DELETE CASCADE
             );
 
+            CREATE TABLE IF NOT EXISTS practice_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                account_email TEXT NOT NULL COLLATE NOCASE,
+                started_at TEXT NOT NULL,
+                completed_at TEXT NOT NULL,
+                duration_seconds INTEGER NOT NULL DEFAULT 0,
+                total_questions INTEGER NOT NULL DEFAULT 0,
+                correct_answers INTEGER NOT NULL DEFAULT 0,
+                word_source TEXT NOT NULL DEFAULT '',
+                FOREIGN KEY (account_email) REFERENCES accounts(email) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS practice_answers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                session_id INTEGER NOT NULL,
+                lesson_id TEXT NOT NULL DEFAULT '',
+                word TEXT NOT NULL,
+                selected_choice TEXT NOT NULL DEFAULT '',
+                correct_choice TEXT NOT NULL DEFAULT '',
+                is_correct INTEGER NOT NULL DEFAULT 0,
+                answered_at TEXT NOT NULL,
+                FOREIGN KEY (session_id) REFERENCES practice_sessions(id) ON DELETE CASCADE
+            );
+
             CREATE INDEX IF NOT EXISTS ix_lessons_account_email ON lessons(account_email);
             CREATE INDEX IF NOT EXISTS ix_lesson_words_lesson_id ON lesson_words(lesson_id);
+            CREATE INDEX IF NOT EXISTS ix_word_progress_lesson_word_id ON word_progress(lesson_word_id);
+            CREATE INDEX IF NOT EXISTS ix_word_practice_stats_lesson_word_id ON word_practice_stats(lesson_word_id);
+            CREATE INDEX IF NOT EXISTS ix_practice_sessions_account_email ON practice_sessions(account_email);
+            CREATE INDEX IF NOT EXISTS ix_practice_answers_session_id ON practice_answers(session_id);
+            CREATE INDEX IF NOT EXISTS ix_favorites_account_email ON favorites(account_email);
             """;
         command.ExecuteNonQuery();
         EnsureAccountNoteColumn(connection);
         EnsureAccountAvatarPathColumn(connection);
         EnsureSettingsDarkModeColumn(connection);
         EnsureSettingsPracticeSessionCountColumn(connection);
-        EnsureLessonWordFavoriteColumn(connection);
-        EnsureLessonWordPracticeColumns(connection);
+        EnsureLessonWordAudioPathColumn(connection);
+        BackfillLegacyWordData(connection);
         ClearSharedAccountAvatars(connection);
     }
 
-    private static void ResetLegacySchemaIfNeeded(SqliteConnection connection)
+    private static void MigrateLegacySharedSchema(SqliteConnection connection)
     {
-        using var foreignKeysOff = connection.CreateCommand();
-        foreignKeysOff.CommandText = "PRAGMA foreign_keys = OFF;";
-        foreignKeysOff.ExecuteNonQuery();
+        var legacyOwnerEmail = GetLegacyOwnerEmail(connection);
 
         if (TableExists(connection, "lessons") && !ColumnExists(connection, "lessons", "account_email"))
         {
-            DropTable(connection, "lesson_words");
-            DropTable(connection, "lessons");
+            using var command = connection.CreateCommand();
+            command.CommandText = "ALTER TABLE lessons ADD COLUMN account_email TEXT NOT NULL DEFAULT '';";
+            command.ExecuteNonQuery();
+
+            if (!string.IsNullOrWhiteSpace(legacyOwnerEmail))
+            {
+                using var updateCommand = connection.CreateCommand();
+                updateCommand.CommandText = """
+                    UPDATE lessons
+                    SET account_email = $accountEmail
+                    WHERE account_email = '';
+                    """;
+                updateCommand.Parameters.AddWithValue("$accountEmail", legacyOwnerEmail);
+                updateCommand.ExecuteNonQuery();
+            }
         }
 
         if (TableExists(connection, "settings") && !ColumnExists(connection, "settings", "account_email"))
         {
-            DropTable(connection, "settings");
+            using (var command = connection.CreateCommand())
+            {
+                command.CommandText = "ALTER TABLE settings ADD COLUMN account_email TEXT NOT NULL DEFAULT '';";
+                command.ExecuteNonQuery();
+            }
+
+            if (!string.IsNullOrWhiteSpace(legacyOwnerEmail))
+            {
+                using var updateCommand = connection.CreateCommand();
+                updateCommand.CommandText = """
+                    UPDATE settings
+                    SET account_email = $accountEmail
+                    WHERE account_email = '';
+                    """;
+                updateCommand.Parameters.AddWithValue("$accountEmail", legacyOwnerEmail);
+                updateCommand.ExecuteNonQuery();
+            }
+
+            using var dedupeCommand = connection.CreateCommand();
+            dedupeCommand.CommandText = """
+                DELETE FROM settings
+                WHERE rowid NOT IN (
+                    SELECT MIN(rowid)
+                    FROM settings
+                    GROUP BY account_email
+                );
+                """;
+            dedupeCommand.ExecuteNonQuery();
+
+            using var indexCommand = connection.CreateCommand();
+            indexCommand.CommandText = "CREATE UNIQUE INDEX IF NOT EXISTS ux_settings_account_email ON settings(account_email);";
+            indexCommand.ExecuteNonQuery();
+        }
+    }
+
+    private static string GetLegacyOwnerEmail(SqliteConnection connection)
+    {
+        if (!TableExists(connection, "accounts"))
+        {
+            return "";
         }
 
-        using var foreignKeysOn = connection.CreateCommand();
-        foreignKeysOn.CommandText = "PRAGMA foreign_keys = ON;";
-        foreignKeysOn.ExecuteNonQuery();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT email
+            FROM accounts
+            ORDER BY datetime(updated_at) DESC, datetime(created_at) DESC, lower(email)
+            LIMIT 1;
+            """;
+
+        return command.ExecuteScalar() as string ?? "";
     }
 
     private static void EnsureAccountNoteColumn(SqliteConnection connection)
@@ -343,28 +511,65 @@ public sealed class LocalStorageService
         command.ExecuteNonQuery();
     }
 
-    private static void EnsureLessonWordFavoriteColumn(SqliteConnection connection)
-    {
-        if (!TableExists(connection, "lesson_words") || ColumnExists(connection, "lesson_words", "is_favorite"))
-        {
-            return;
-        }
-
-        using var command = connection.CreateCommand();
-        command.CommandText = "ALTER TABLE lesson_words ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0;";
-        command.ExecuteNonQuery();
-    }
-
-    private static void EnsureLessonWordPracticeColumns(SqliteConnection connection)
+    private static void EnsureLessonWordAudioPathColumn(SqliteConnection connection)
     {
         if (!TableExists(connection, "lesson_words"))
         {
             return;
         }
 
-        AddLessonWordColumnIfMissing(connection, "practice_correct_quiz_count", "INTEGER NOT NULL DEFAULT 0");
-        AddLessonWordColumnIfMissing(connection, "practice_incorrect_quiz_count", "INTEGER NOT NULL DEFAULT 0");
-        AddLessonWordColumnIfMissing(connection, "last_practice_at", "TEXT NULL");
+        AddLessonWordColumnIfMissing(connection, "audio_path", "TEXT NOT NULL DEFAULT ''");
+    }
+
+    private static void BackfillLegacyWordData(SqliteConnection connection)
+    {
+        if (!TableExists(connection, "word_progress") || !TableExists(connection, "word_practice_stats") || !TableExists(connection, "favorites"))
+        {
+            return;
+        }
+
+        if (!ColumnExists(connection, "lesson_words", "mastery_level"))
+        {
+            return;
+        }
+
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                INSERT OR IGNORE INTO word_progress (
+                    lesson_word_id, mastery_level, review_count, last_reviewed_at, next_review_date)
+                SELECT
+                    id, mastery_level, review_count, last_reviewed_at, next_review_date
+                FROM lesson_words;
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                INSERT OR IGNORE INTO word_practice_stats (
+                    lesson_word_id, correct_quiz_count, incorrect_quiz_count,
+                    practice_correct_quiz_count, practice_incorrect_quiz_count, last_practice_at)
+                SELECT
+                    id, correct_quiz_count, incorrect_quiz_count,
+                    practice_correct_quiz_count, practice_incorrect_quiz_count, last_practice_at
+                FROM lesson_words;
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                INSERT OR IGNORE INTO favorites (account_email, lesson_word_id)
+                SELECT l.account_email, lw.id
+                FROM lesson_words lw
+                INNER JOIN lessons l ON l.id = lw.lesson_id
+                WHERE lw.is_favorite = 1;
+                """;
+            command.ExecuteNonQuery();
+        }
     }
 
     private static void AddLessonWordColumnIfMissing(SqliteConnection connection, string columnName, string definition)
@@ -467,6 +672,9 @@ public sealed class LocalStorageService
     {
         var connection = new SqliteConnection(ConnectionString);
         connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA foreign_keys = ON;";
+        command.ExecuteNonQuery();
         return connection;
     }
 
@@ -500,6 +708,51 @@ public sealed class LocalStorageService
 
     private static List<Deck> LoadDecks(SqliteConnection connection, string accountEmail)
     {
+        var hasAccountEmailColumn = ColumnExists(connection, "lessons", "account_email");
+        var decks = hasAccountEmailColumn
+            ? LoadDecksByAccountEmail(connection, accountEmail)
+            : LoadLegacyDecks(connection);
+
+        if (decks.Count == 0 && hasAccountEmailColumn && !string.IsNullOrWhiteSpace(accountEmail))
+        {
+            decks = LoadDecksByAccountEmail(connection, "");
+        }
+
+        return decks;
+    }
+
+    private static List<VocabularyWord> LoadWords(SqliteConnection connection, string accountEmail)
+    {
+        var hasAccountEmailColumn = ColumnExists(connection, "lessons", "account_email");
+        var words = hasAccountEmailColumn
+            ? LoadWordsByAccountEmail(connection, accountEmail)
+            : LoadLegacyWords(connection);
+
+        if (words.Count == 0 && hasAccountEmailColumn && !string.IsNullOrWhiteSpace(accountEmail))
+        {
+            words = LoadWordsByAccountEmail(connection, "");
+        }
+
+        return words;
+    }
+
+    private static SettingsState LoadSettings(SqliteConnection connection, string accountEmail)
+    {
+        var hasAccountEmailColumn = ColumnExists(connection, "settings", "account_email");
+        var settings = hasAccountEmailColumn
+            ? LoadSettingsByAccountEmail(connection, accountEmail)
+            : LoadLegacySettings(connection);
+
+        if (settings is null && hasAccountEmailColumn && !string.IsNullOrWhiteSpace(accountEmail))
+        {
+            settings = LoadSettingsByAccountEmail(connection, "");
+        }
+
+        return settings ?? new SettingsState();
+    }
+
+    private static List<Deck> LoadDecksByAccountEmail(SqliteConnection connection, string accountEmail)
+    {
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT id, name, learned_words, total_words, created_at, updated_at
@@ -527,21 +780,62 @@ public sealed class LocalStorageService
         return decks;
     }
 
-    private static List<VocabularyWord> LoadWords(SqliteConnection connection, string accountEmail)
+    private static List<VocabularyWord> LoadWordsByAccountEmail(SqliteConnection connection, string accountEmail)
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT lw.lesson_id, lw.word, lw.ipa, lw.type, lw.meaning, lw.vietnamese_meaning, lw.example,
-                   lw.mastery_level, lw.review_count, lw.correct_quiz_count, lw.incorrect_quiz_count,
-                   lw.practice_correct_quiz_count, lw.practice_incorrect_quiz_count,
-                   lw.is_favorite, lw.last_reviewed_at, lw.last_practice_at, lw.next_review_date
+            SELECT lw.lesson_id, lw.word, lw.ipa, lw.type, lw.meaning, lw.vietnamese_meaning, lw.audio_path,
+                   COALESCE(p.mastery_level, 0), COALESCE(p.review_count, 0),
+                   COALESCE(s.correct_quiz_count, 0), COALESCE(s.incorrect_quiz_count, 0),
+                   COALESCE(s.practice_correct_quiz_count, 0), COALESCE(s.practice_incorrect_quiz_count, 0),
+                   CASE WHEN f.lesson_word_id IS NULL THEN 0 ELSE 1 END,
+                   p.last_reviewed_at, s.last_practice_at, COALESCE(p.next_review_date, $today)
             FROM lesson_words lw
             INNER JOIN lessons l ON l.id = lw.lesson_id
+            LEFT JOIN word_progress p ON p.lesson_word_id = lw.id
+            LEFT JOIN word_practice_stats s ON s.lesson_word_id = lw.id
+            LEFT JOIN favorites f ON f.lesson_word_id = lw.id AND lower(f.account_email) = lower($accountEmail)
             WHERE lower(l.account_email) = lower($accountEmail)
             ORDER BY lw.id;
             """;
         command.Parameters.AddWithValue("$accountEmail", accountEmail.Trim());
+        command.Parameters.AddWithValue("$today", FormatDateTime(DateTime.Today));
 
+        return ReadWords(command);
+    }
+
+    private static SettingsState? LoadSettingsByAccountEmail(SqliteConnection connection, string accountEmail)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT audio_volume, daily_reminders, auto_play_audio, offline_mode, is_dark_mode, practice_session_count
+            FROM settings
+            WHERE lower(account_email) = lower($accountEmail);
+            """;
+        command.Parameters.AddWithValue("$accountEmail", accountEmail.Trim());
+
+        using var reader = command.ExecuteReader();
+        if (!reader.Read())
+        {
+            return null;
+        }
+
+        var storedPracticeSessionCount = reader.GetInt32(5);
+        var savedPracticeSessionCount = CountPracticeSessions(connection, accountEmail);
+
+        return new SettingsState
+        {
+            AudioVolume = reader.GetDouble(0),
+            DailyReminders = reader.GetInt32(1) == 1,
+            AutoPlayAudio = reader.GetInt32(2) == 1,
+            OfflineMode = reader.GetInt32(3) == 1,
+            IsDarkMode = reader.GetInt32(4) == 1,
+            PracticeSessionCount = Math.Max(storedPracticeSessionCount, savedPracticeSessionCount)
+        };
+    }
+
+    private static List<VocabularyWord> ReadWords(SqliteCommand command)
+    {
         using var reader = command.ExecuteReader();
         var words = new List<VocabularyWord>();
         while (reader.Read())
@@ -554,7 +848,7 @@ public sealed class LocalStorageService
                 Type = reader.GetString(3),
                 Meaning = reader.GetString(4),
                 VietnameseMeaning = reader.GetString(5),
-                Example = reader.GetString(6),
+                AudioPath = reader.GetString(6),
                 MasteryLevel = reader.GetInt32(7),
                 ReviewCount = reader.GetInt32(8),
                 CorrectQuizCount = reader.GetInt32(9),
@@ -571,15 +865,87 @@ public sealed class LocalStorageService
         return words;
     }
 
-    private static SettingsState LoadSettings(SqliteConnection connection, string accountEmail)
+    private static List<Deck> LoadLegacyDecks(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT id, name, learned_words, total_words, created_at, updated_at
+            FROM lessons
+            ORDER BY datetime(updated_at) DESC;
+            """;
+
+        using var reader = command.ExecuteReader();
+        var decks = new List<Deck>();
+        while (reader.Read())
+        {
+            decks.Add(new Deck
+            {
+                Id = reader.GetString(0),
+                Name = reader.GetString(1),
+                LearnedWords = reader.GetInt32(2),
+                TotalWords = reader.GetInt32(3),
+                CreatedAt = ParseDateTime(reader.GetString(4)),
+                UpdatedAt = ParseDateTime(reader.GetString(5))
+            });
+        }
+
+        return decks;
+    }
+
+    private static List<VocabularyWord> LoadLegacyWords(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT lw.lesson_id, lw.word, lw.ipa, lw.type, lw.meaning, lw.vietnamese_meaning, lw.example,
+                   COALESCE(lw.mastery_level, 0), COALESCE(lw.review_count, 0),
+                   COALESCE(lw.correct_quiz_count, 0), COALESCE(lw.incorrect_quiz_count, 0),
+                   COALESCE(lw.practice_correct_quiz_count, 0), COALESCE(lw.practice_incorrect_quiz_count, 0),
+                   COALESCE(lw.is_favorite, 0), lw.last_reviewed_at, lw.last_practice_at,
+                   COALESCE(lw.next_review_date, $today)
+            FROM lesson_words lw
+            INNER JOIN lessons l ON l.id = lw.lesson_id
+            ORDER BY lw.id;
+            """;
+        command.Parameters.AddWithValue("$today", FormatDateTime(DateTime.Today));
+
+        using var reader = command.ExecuteReader();
+        var words = new List<VocabularyWord>();
+        while (reader.Read())
+        {
+            words.Add(new VocabularyWord
+            {
+                LessonId = reader.GetString(0),
+                Word = reader.GetString(1),
+                Ipa = reader.GetString(2),
+                Type = reader.GetString(3),
+                Meaning = reader.GetString(4),
+                VietnameseMeaning = reader.GetString(5),
+                AudioPath = "",
+                MasteryLevel = reader.GetInt32(7),
+                ReviewCount = reader.GetInt32(8),
+                CorrectQuizCount = reader.GetInt32(9),
+                IncorrectQuizCount = reader.GetInt32(10),
+                PracticeCorrectQuizCount = reader.GetInt32(11),
+                PracticeIncorrectQuizCount = reader.GetInt32(12),
+                IsFavorite = reader.GetInt32(13) == 1,
+                LastReviewedAt = reader.IsDBNull(14) ? null : ParseDateTime(reader.GetString(14)),
+                LastPracticeAt = reader.IsDBNull(15) ? null : ParseDateTime(reader.GetString(15)),
+                NextReviewDate = ParseDateTime(reader.GetString(16))
+            });
+        }
+
+        return words;
+    }
+
+    private static SettingsState LoadLegacySettings(SqliteConnection connection)
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
             SELECT audio_volume, daily_reminders, auto_play_audio, offline_mode, is_dark_mode, practice_session_count
             FROM settings
-            WHERE lower(account_email) = lower($accountEmail);
+            ORDER BY rowid DESC
+            LIMIT 1;
             """;
-        command.Parameters.AddWithValue("$accountEmail", accountEmail.Trim());
 
         using var reader = command.ExecuteReader();
         if (!reader.Read())
@@ -596,6 +962,23 @@ public sealed class LocalStorageService
             IsDarkMode = reader.GetInt32(4) == 1,
             PracticeSessionCount = reader.GetInt32(5)
         };
+    }
+
+    private static int CountPracticeSessions(SqliteConnection connection, string accountEmail)
+    {
+        if (!TableExists(connection, "practice_sessions"))
+        {
+            return 0;
+        }
+
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT COUNT(*)
+            FROM practice_sessions
+            WHERE lower(account_email) = lower($accountEmail);
+            """;
+        command.Parameters.AddWithValue("$accountEmail", accountEmail.Trim());
+        return Convert.ToInt32(command.ExecuteScalar());
     }
 
     private static bool AccountExists(SqliteConnection connection, string email)
@@ -702,38 +1085,105 @@ public sealed class LocalStorageService
 
         foreach (var word in words.Where(word => validLessonIds.Contains(word.LessonId)))
         {
-            using var command = connection.CreateCommand();
-            command.Transaction = transaction;
-            command.CommandText = """
-                INSERT INTO lesson_words (
-                    lesson_id, word, ipa, type, meaning, vietnamese_meaning, example,
-                    mastery_level, review_count, correct_quiz_count, incorrect_quiz_count,
-                    practice_correct_quiz_count, practice_incorrect_quiz_count,
-                    is_favorite, last_reviewed_at, last_practice_at, next_review_date)
-                VALUES (
-                    $lessonId, $word, $ipa, $type, $meaning, $vietnameseMeaning, $example,
-                    $masteryLevel, $reviewCount, $correctQuizCount, $incorrectQuizCount,
-                    $practiceCorrectQuizCount, $practiceIncorrectQuizCount,
-                    $isFavorite, $lastReviewedAt, $lastPracticeAt, $nextReviewDate);
-                """;
-            command.Parameters.AddWithValue("$lessonId", word.LessonId);
-            command.Parameters.AddWithValue("$word", word.Word);
-            command.Parameters.AddWithValue("$ipa", word.Ipa);
-            command.Parameters.AddWithValue("$type", word.Type);
-            command.Parameters.AddWithValue("$meaning", word.Meaning);
-            command.Parameters.AddWithValue("$vietnameseMeaning", word.VietnameseMeaning);
-            command.Parameters.AddWithValue("$example", word.Example);
-            command.Parameters.AddWithValue("$masteryLevel", word.MasteryLevel);
-            command.Parameters.AddWithValue("$reviewCount", word.ReviewCount);
-            command.Parameters.AddWithValue("$correctQuizCount", word.CorrectQuizCount);
-            command.Parameters.AddWithValue("$incorrectQuizCount", word.IncorrectQuizCount);
-            command.Parameters.AddWithValue("$practiceCorrectQuizCount", word.PracticeCorrectQuizCount);
-            command.Parameters.AddWithValue("$practiceIncorrectQuizCount", word.PracticeIncorrectQuizCount);
-            command.Parameters.AddWithValue("$isFavorite", word.IsFavorite ? 1 : 0);
-            command.Parameters.AddWithValue("$lastReviewedAt", word.LastReviewedAt is null ? DBNull.Value : FormatDateTime(word.LastReviewedAt.Value));
-            command.Parameters.AddWithValue("$lastPracticeAt", word.LastPracticeAt is null ? DBNull.Value : FormatDateTime(word.LastPracticeAt.Value));
-            command.Parameters.AddWithValue("$nextReviewDate", FormatDateTime(word.NextReviewDate));
-            command.ExecuteNonQuery();
+            long lessonWordId;
+            var useLegacyLessonWordColumns = ColumnExists(connection, "lesson_words", "next_review_date")
+                || ColumnExists(connection, "lesson_words", "mastery_level")
+                || ColumnExists(connection, "lesson_words", "example")
+                || ColumnExists(connection, "lesson_words", "is_favorite");
+            using (var command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = useLegacyLessonWordColumns
+                    ? """
+                        INSERT INTO lesson_words (
+                            lesson_id, word, ipa, type, meaning, vietnamese_meaning, example,
+                            mastery_level, review_count, correct_quiz_count, incorrect_quiz_count,
+                            practice_correct_quiz_count, practice_incorrect_quiz_count, is_favorite,
+                            last_reviewed_at, last_practice_at, next_review_date, audio_path)
+                        VALUES (
+                            $lessonId, $word, $ipa, $type, $meaning, $vietnameseMeaning, $example,
+                            $masteryLevel, $reviewCount, $correctQuizCount, $incorrectQuizCount,
+                            $practiceCorrectQuizCount, $practiceIncorrectQuizCount, $isFavorite,
+                            $lastReviewedAt, $lastPracticeAt, $nextReviewDate, $audioPath);
+                        SELECT last_insert_rowid();
+                        """
+                    : """
+                        INSERT INTO lesson_words (
+                            lesson_id, word, ipa, type, meaning, vietnamese_meaning, audio_path)
+                        VALUES (
+                            $lessonId, $word, $ipa, $type, $meaning, $vietnameseMeaning, $audioPath);
+                        SELECT last_insert_rowid();
+                        """;
+                command.Parameters.AddWithValue("$lessonId", word.LessonId);
+                command.Parameters.AddWithValue("$word", word.Word);
+                command.Parameters.AddWithValue("$ipa", word.Ipa);
+                command.Parameters.AddWithValue("$type", word.Type);
+                command.Parameters.AddWithValue("$meaning", word.Meaning);
+                command.Parameters.AddWithValue("$vietnameseMeaning", word.VietnameseMeaning);
+                command.Parameters.AddWithValue("$example", word.Example);
+                command.Parameters.AddWithValue("$masteryLevel", word.MasteryLevel);
+                command.Parameters.AddWithValue("$reviewCount", word.ReviewCount);
+                command.Parameters.AddWithValue("$correctQuizCount", word.CorrectQuizCount);
+                command.Parameters.AddWithValue("$incorrectQuizCount", word.IncorrectQuizCount);
+                command.Parameters.AddWithValue("$practiceCorrectQuizCount", word.PracticeCorrectQuizCount);
+                command.Parameters.AddWithValue("$practiceIncorrectQuizCount", word.PracticeIncorrectQuizCount);
+                command.Parameters.AddWithValue("$isFavorite", word.IsFavorite ? 1 : 0);
+                command.Parameters.AddWithValue("$lastReviewedAt", word.LastReviewedAt is null ? DBNull.Value : FormatDateTime(word.LastReviewedAt.Value));
+                command.Parameters.AddWithValue("$lastPracticeAt", word.LastPracticeAt is null ? DBNull.Value : FormatDateTime(word.LastPracticeAt.Value));
+                command.Parameters.AddWithValue("$nextReviewDate", FormatDateTime(word.NextReviewDate));
+                command.Parameters.AddWithValue("$audioPath", word.AudioPath);
+                lessonWordId = Convert.ToInt64(command.ExecuteScalar());
+            }
+
+            using (var command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = """
+                    INSERT INTO word_progress (
+                        lesson_word_id, mastery_level, review_count, last_reviewed_at, next_review_date)
+                    VALUES (
+                        $lessonWordId, $masteryLevel, $reviewCount, $lastReviewedAt, $nextReviewDate);
+                    """;
+                command.Parameters.AddWithValue("$lessonWordId", lessonWordId);
+                command.Parameters.AddWithValue("$masteryLevel", word.MasteryLevel);
+                command.Parameters.AddWithValue("$reviewCount", word.ReviewCount);
+                command.Parameters.AddWithValue("$lastReviewedAt", word.LastReviewedAt is null ? DBNull.Value : FormatDateTime(word.LastReviewedAt.Value));
+                command.Parameters.AddWithValue("$nextReviewDate", FormatDateTime(word.NextReviewDate));
+                command.ExecuteNonQuery();
+            }
+
+            using (var command = connection.CreateCommand())
+            {
+                command.Transaction = transaction;
+                command.CommandText = """
+                    INSERT INTO word_practice_stats (
+                        lesson_word_id, correct_quiz_count, incorrect_quiz_count,
+                        practice_correct_quiz_count, practice_incorrect_quiz_count, last_practice_at)
+                    VALUES (
+                        $lessonWordId, $correctQuizCount, $incorrectQuizCount,
+                        $practiceCorrectQuizCount, $practiceIncorrectQuizCount, $lastPracticeAt);
+                    """;
+                command.Parameters.AddWithValue("$lessonWordId", lessonWordId);
+                command.Parameters.AddWithValue("$correctQuizCount", word.CorrectQuizCount);
+                command.Parameters.AddWithValue("$incorrectQuizCount", word.IncorrectQuizCount);
+                command.Parameters.AddWithValue("$practiceCorrectQuizCount", word.PracticeCorrectQuizCount);
+                command.Parameters.AddWithValue("$practiceIncorrectQuizCount", word.PracticeIncorrectQuizCount);
+                command.Parameters.AddWithValue("$lastPracticeAt", word.LastPracticeAt is null ? DBNull.Value : FormatDateTime(word.LastPracticeAt.Value));
+                command.ExecuteNonQuery();
+            }
+
+            if (word.IsFavorite)
+            {
+                using var command = connection.CreateCommand();
+                command.Transaction = transaction;
+                command.CommandText = """
+                    INSERT OR REPLACE INTO favorites (account_email, lesson_word_id)
+                    VALUES ($accountEmail, $lessonWordId);
+                    """;
+                command.Parameters.AddWithValue("$accountEmail", accountEmail.Trim());
+                command.Parameters.AddWithValue("$lessonWordId", lessonWordId);
+                command.ExecuteNonQuery();
+            }
         }
     }
 

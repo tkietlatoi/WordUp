@@ -32,6 +32,7 @@ public sealed class MainViewModel : ViewModelBase
     private readonly DispatcherTimer studyAutoTimer;
     private readonly DispatcherTimer quizTimer;
     private object? speechVoice;
+    private MediaPlayer? audioPlayer;
     private CancellationTokenSource? newLessonIpaLookupCancellation;
     private CancellationTokenSource? editorIpaLookupCancellation;
     private string currentView = "Dashboard";
@@ -71,6 +72,7 @@ public sealed class MainViewModel : ViewModelBase
     private bool newLessonIpaWasAutoFilled;
     private string newLessonMeaning = "";
     private string newLessonType = "";
+    private string newLessonAudioPath = "";
     private string newLessonFilePath = "";
     private string newLessonMessage = "";
     private string lessonWordSearchText = "";
@@ -111,6 +113,7 @@ public sealed class MainViewModel : ViewModelBase
     private bool autoPlayAudio;
     private bool offlineMode;
     private bool isDarkMode;
+    private bool isApplyingAccountState;
     private string settingsMessage = "";
     private VocabularyWord? todayWord;
     private IReadOnlyList<string> todayWordChoices = ["", "", "", ""];
@@ -150,6 +153,8 @@ public sealed class MainViewModel : ViewModelBase
         CancelDeleteLessonWordCommand = new RelayCommand(_ => CancelDeleteLessonWord());
         ConfirmDeleteLessonWordCommand = new RelayCommand(_ => ConfirmDeleteLessonWord());
         AddLessonWordCommand = new RelayCommand(_ => AddLessonWord());
+        ImportLessonWordAudioCommand = new RelayCommand(_ => ImportLessonWordAudio());
+        ClearLessonWordAudioCommand = new RelayCommand(_ => NewLessonAudioPath = "");
         ImportLessonFileCommand = new RelayCommand(_ => ImportLessonFile());
         SaveNewLessonCommand = new RelayCommand(_ => SaveNewLesson());
         CancelNewLessonCommand = new RelayCommand(_ => ShowLessonList());
@@ -244,6 +249,8 @@ public sealed class MainViewModel : ViewModelBase
     public ICommand CancelDeleteLessonWordCommand { get; }
     public ICommand ConfirmDeleteLessonWordCommand { get; }
     public ICommand AddLessonWordCommand { get; }
+    public ICommand ImportLessonWordAudioCommand { get; }
+    public ICommand ClearLessonWordAudioCommand { get; }
     public ICommand ImportLessonFileCommand { get; }
     public ICommand SaveNewLessonCommand { get; }
     public ICommand CancelNewLessonCommand { get; }
@@ -630,8 +637,12 @@ public sealed class MainViewModel : ViewModelBase
             if (SetProperty(ref isDarkMode, value))
             {
                 ApplyTheme();
+                OnThemeChanged();
                 OnTodayWordChanged();
-                SaveAppState();
+                if (!isApplyingAccountState)
+                {
+                    SaveAppState();
+                }
             }
         }
     }
@@ -775,6 +786,22 @@ public sealed class MainViewModel : ViewModelBase
         get => newLessonType;
         set => SetProperty(ref newLessonType, value);
     }
+
+    public string NewLessonAudioPath
+    {
+        get => newLessonAudioPath;
+        set
+        {
+            if (SetProperty(ref newLessonAudioPath, value))
+            {
+                OnPropertyChanged(nameof(NewLessonAudioFileName));
+            }
+        }
+    }
+
+    public string NewLessonAudioFileName => string.IsNullOrWhiteSpace(NewLessonAudioPath)
+        ? "Chưa chọn file âm thanh"
+        : Path.GetFileName(NewLessonAudioPath);
 
     public string NewLessonFilePath
     {
@@ -1301,6 +1328,7 @@ public sealed class MainViewModel : ViewModelBase
         NewLessonIpa = "";
         NewLessonMeaning = "";
         NewLessonType = "";
+        NewLessonAudioPath = "";
         NewLessonFilePath = "";
         LessonWordSearchText = "";
         NewLessonMessage = "Nhập từ thủ công hoặc chọn tệp để thêm nhiều từ.";
@@ -1324,6 +1352,7 @@ public sealed class MainViewModel : ViewModelBase
         NewLessonIpa = "";
         NewLessonMeaning = "";
         NewLessonType = "";
+        NewLessonAudioPath = "";
         NewLessonFilePath = "";
         LessonWordSearchText = "";
         NewLessonMessage = "Chỉnh tên bài học, thêm từ mới hoặc xóa từ trong bài.";
@@ -1350,6 +1379,7 @@ public sealed class MainViewModel : ViewModelBase
         NewLessonIpa = word.Ipa;
         NewLessonMeaning = string.IsNullOrWhiteSpace(word.VietnameseMeaning) ? word.Meaning : word.VietnameseMeaning;
         NewLessonType = word.Type;
+        NewLessonAudioPath = word.AudioPath;
         NewLessonMessage = $"Đang sửa từ {word.Word}.";
         OnLessonEditorChanged();
     }
@@ -1469,6 +1499,7 @@ public sealed class MainViewModel : ViewModelBase
             editingLessonWord.Meaning = NewLessonMeaning.Trim();
             editingLessonWord.VietnameseMeaning = NewLessonMeaning.Trim();
             editingLessonWord.Type = string.IsNullOrWhiteSpace(NewLessonType) ? "word" : NewLessonType.Trim();
+            editingLessonWord.AudioPath = NewLessonAudioPath.Trim();
             NewLessonMessage = $"Đã cập nhật từ {editingLessonWord.Word}.";
             OnPropertyChanged(nameof(FilteredNewLessonWords));
             ClearLessonWordEditor();
@@ -1481,7 +1512,8 @@ public sealed class MainViewModel : ViewModelBase
             Ipa = NewLessonIpa.Trim(),
             Meaning = NewLessonMeaning.Trim(),
             VietnameseMeaning = NewLessonMeaning.Trim(),
-            Type = string.IsNullOrWhiteSpace(NewLessonType) ? "word" : NewLessonType.Trim()
+            Type = string.IsNullOrWhiteSpace(NewLessonType) ? "word" : NewLessonType.Trim(),
+            AudioPath = NewLessonAudioPath.Trim()
         });
 
         ClearLessonWordEditor();
@@ -1621,56 +1653,84 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
+    private void ImportLessonWordAudio()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Chọn file âm thanh",
+            Filter = "Audio files (*.mp3;*.wav;*.m4a;*.wma)|*.mp3;*.wav;*.m4a;*.wma|All files (*.*)|*.*"
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            NewLessonAudioPath = dialog.FileName;
+            NewLessonMessage = $"Đã chọn âm thanh: {Path.GetFileName(dialog.FileName)}.";
+        }
+    }
+
     private void SaveNewLesson()
     {
-        if (string.IsNullOrWhiteSpace(NewLessonName))
+        try
         {
-            NewLessonMessage = "Tên bài học là bắt buộc.";
-            return;
-        }
-
-        if (NewLessonWords.Count == 0)
-        {
-            NewLessonMessage = "Thêm ít nhất một từ trước khi lưu bài học.";
-            return;
-        }
-
-        var lesson = editingLesson ?? new Deck();
-        lesson.Name = NewLessonName.Trim();
-        lesson.TotalWords = NewLessonWords.Count;
-        lesson.UpdatedAt = DateTime.Now;
-
-        if (editingLesson is null)
-        {
-            lesson.CreatedAt = lesson.UpdatedAt;
-            Decks.Add(lesson);
-        }
-        else
-        {
-            foreach (var oldWord in Words.Where(word => word.LessonId == lesson.Id).ToList())
+            if (string.IsNullOrWhiteSpace(NewLessonName))
             {
-                Words.Remove(oldWord);
+                NewLessonMessage = "Tên bài học là bắt buộc.";
+                return;
             }
-        }
 
-        foreach (var word in NewLessonWords)
+            if (NewLessonWords.Count == 0)
+            {
+                NewLessonMessage = "Thêm ít nhất một từ trước khi lưu bài học.";
+                return;
+            }
+
+            var lesson = editingLesson ?? new Deck();
+            var isEditingLesson = editingLesson is not null;
+            var existingWords = isEditingLesson
+                ? Words.Where(word => word.LessonId == lesson.Id).ToList()
+                : [];
+
+            lesson.Name = NewLessonName.Trim();
+            lesson.TotalWords = NewLessonWords.Count;
+            lesson.UpdatedAt = DateTime.Now;
+
+            if (!isEditingLesson)
+            {
+                lesson.CreatedAt = lesson.UpdatedAt;
+                Decks.Add(lesson);
+            }
+            else if (!HaveSameLessonWords(existingWords, NewLessonWords))
+            {
+                foreach (var oldWord in existingWords)
+                {
+                    Words.Remove(oldWord);
+                }
+
+                foreach (var word in NewLessonWords)
+                {
+                    var savedWord = CloneVocabularyWord(word);
+                    savedWord.LessonId = lesson.Id;
+                    Words.Add(savedWord);
+                }
+            }
+
+            SelectedStudyDeck = lesson;
+            SyncLessonProgress();
+            OnPropertyChanged(nameof(FilteredWords));
+            OnPropertyChanged(nameof(CurrentStudyWords));
+            OnPropertyChanged(nameof(CurrentWord));
+            OnPropertyChanged(nameof(StudyProgressText));
+            OnPropertyChanged(nameof(StudyProgressValue));
+            OnProgressChanged();
+            RefreshQuizQuestions();
+            SaveAppState();
+            NewLessonMessage = isEditingLesson ? "Đã cập nhật bài học." : "Đã lưu bài học.";
+            ShowLessonList();
+        }
+        catch (Exception ex)
         {
-            var savedWord = CloneVocabularyWord(word);
-            savedWord.LessonId = lesson.Id;
-            Words.Add(savedWord);
+            NewLessonMessage = $"Không thể lưu bài học: {ex.Message}";
         }
-
-        SelectedStudyDeck = lesson;
-        SyncLessonProgress();
-        OnPropertyChanged(nameof(FilteredWords));
-        OnPropertyChanged(nameof(CurrentStudyWords));
-        OnPropertyChanged(nameof(CurrentWord));
-        OnPropertyChanged(nameof(StudyProgressText));
-        OnPropertyChanged(nameof(StudyProgressValue));
-        OnProgressChanged();
-        RefreshQuizQuestions();
-        SaveAppState();
-        ShowLessonList();
     }
 
     private void ClearLessonWordEditor()
@@ -1680,6 +1740,7 @@ public sealed class MainViewModel : ViewModelBase
         NewLessonIpa = "";
         NewLessonMeaning = "";
         NewLessonType = "";
+        NewLessonAudioPath = "";
         OnLessonEditorChanged();
     }
 
@@ -1754,6 +1815,7 @@ public sealed class MainViewModel : ViewModelBase
             Meaning = word.Meaning,
             VietnameseMeaning = word.VietnameseMeaning,
             Example = word.Example,
+            AudioPath = word.AudioPath,
             LessonId = word.LessonId,
             MasteryLevel = word.MasteryLevel,
             ReviewCount = word.ReviewCount,
@@ -1766,6 +1828,47 @@ public sealed class MainViewModel : ViewModelBase
             LastPracticeAt = word.LastPracticeAt,
             NextReviewDate = word.NextReviewDate
         };
+    }
+
+    private static bool HaveSameLessonWords(
+        IReadOnlyList<VocabularyWord> existingWords,
+        IReadOnlyList<VocabularyWord> newWords)
+    {
+        if (existingWords.Count != newWords.Count)
+        {
+            return false;
+        }
+
+        for (var index = 0; index < existingWords.Count; index++)
+        {
+            if (!AreSameLessonWord(existingWords[index], newWords[index]))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static bool AreSameLessonWord(VocabularyWord left, VocabularyWord right)
+    {
+        return string.Equals(left.Word, right.Word, StringComparison.Ordinal)
+            && string.Equals(left.Ipa, right.Ipa, StringComparison.Ordinal)
+            && string.Equals(left.Type, right.Type, StringComparison.Ordinal)
+            && string.Equals(left.Meaning, right.Meaning, StringComparison.Ordinal)
+            && string.Equals(left.VietnameseMeaning, right.VietnameseMeaning, StringComparison.Ordinal)
+            && string.Equals(left.Example, right.Example, StringComparison.Ordinal)
+            && string.Equals(left.AudioPath, right.AudioPath, StringComparison.Ordinal)
+            && left.MasteryLevel == right.MasteryLevel
+            && left.ReviewCount == right.ReviewCount
+            && left.CorrectQuizCount == right.CorrectQuizCount
+            && left.IncorrectQuizCount == right.IncorrectQuizCount
+            && left.PracticeCorrectQuizCount == right.PracticeCorrectQuizCount
+            && left.PracticeIncorrectQuizCount == right.PracticeIncorrectQuizCount
+            && left.IsFavorite == right.IsFavorite
+            && Nullable.Equals(left.LastReviewedAt, right.LastReviewedAt)
+            && Nullable.Equals(left.LastPracticeAt, right.LastPracticeAt)
+            && left.NextReviewDate == right.NextReviewDate;
     }
 
     private IReadOnlyList<VocabularyWord> ReadVocabularyFile(string path)
@@ -2292,6 +2395,7 @@ public sealed class MainViewModel : ViewModelBase
         if (isPracticeQuiz)
         {
             PracticeSessionCount++;
+            storageService.SavePracticeSession(User.Email, QuizCompletedTime, PracticeWordSource, QuizQuestions.ToList());
         }
 
         QuizSubmitMessage = "";
@@ -2534,9 +2638,17 @@ public sealed class MainViewModel : ViewModelBase
             return;
         }
 
-        User.AvatarPath = SaveAvatarForCurrentAccount(dialog.FileName);
-        IsAvatarDialogOpen = false;
-        SaveAppState();
+        try
+        {
+            User.AvatarPath = SaveAvatarForCurrentAccount(dialog.FileName);
+            IsAvatarDialogOpen = false;
+            SaveAppState();
+        }
+        catch (Exception ex)
+        {
+            IsAvatarDialogOpen = false;
+            ProfileMessage = $"Không thể nhập ảnh đại diện: {ex.Message}";
+        }
     }
 
     private string SaveAvatarForCurrentAccount(string sourcePath)
@@ -2558,13 +2670,22 @@ public sealed class MainViewModel : ViewModelBase
             "Avatars");
         Directory.CreateDirectory(avatarDirectory);
 
-        var avatarPath = Path.Combine(avatarDirectory, $"{CreateAccountFileName(User.Email)}{extension.ToLowerInvariant()}");
-        if (!Path.GetFullPath(sourcePath).Equals(Path.GetFullPath(avatarPath), StringComparison.OrdinalIgnoreCase))
+        var avatarPath = Path.Combine(
+            avatarDirectory,
+            $"{CreateAccountFileName(User.Email)}_{DateTime.Now:yyyyMMddHHmmssfff}{extension.ToLowerInvariant()}");
+        try
         {
-            File.Copy(sourcePath, avatarPath, overwrite: true);
-        }
+            if (!Path.GetFullPath(sourcePath).Equals(Path.GetFullPath(avatarPath), StringComparison.OrdinalIgnoreCase))
+            {
+                File.Copy(sourcePath, avatarPath, overwrite: true);
+            }
 
-        return avatarPath;
+            return avatarPath;
+        }
+        catch
+        {
+            return sourcePath;
+        }
     }
 
     private static string CreateAccountFileName(string email)
@@ -2594,6 +2715,7 @@ public sealed class MainViewModel : ViewModelBase
             SetBrush("PrimaryTextBrush", Color.FromRgb(242, 244, 250));
             SetBrush("BorderBrush", Color.FromRgb(67, 72, 94));
             SetBrush("IndigoDarkBrush", Color.FromRgb(204, 211, 255));
+            SetBrush("IndigoBrush", Color.FromRgb(115, 127, 255));
             SetBrush("HoverSurfaceBrush", Color.FromRgb(48, 52, 70));
         }
         else
@@ -2604,8 +2726,18 @@ public sealed class MainViewModel : ViewModelBase
             SetBrush("PrimaryTextBrush", Color.FromRgb(17, 19, 34));
             SetBrush("BorderBrush", Color.FromRgb(221, 217, 235));
             SetBrush("IndigoDarkBrush", Color.FromRgb(21, 32, 138));
+            SetBrush("IndigoBrush", Color.FromRgb(95, 116, 220));
             SetBrush("HoverSurfaceBrush", Color.FromRgb(240, 238, 250));
         }
+    }
+
+    private void OnThemeChanged()
+    {
+        OnPropertyChanged(nameof(StudyFavoriteForeground));
+        OnPropertyChanged(nameof(TodayFavoriteForeground));
+        OnPropertyChanged(nameof(LearnedPracticeSourceBorder));
+        OnPropertyChanged(nameof(FavoritePracticeSourceBorder));
+        OnPropertyChanged(nameof(AllPracticeSourceBorder));
     }
 
     private static void SetBrush(string resourceKey, Color color)
@@ -2990,7 +3122,34 @@ public sealed class MainViewModel : ViewModelBase
             return;
         }
 
+        if (TryPlayAudioFile(word.AudioPath))
+        {
+            return;
+        }
+
         SpeakText(word.Word);
+    }
+
+    private bool TryPlayAudioFile(string audioPath)
+    {
+        if (string.IsNullOrWhiteSpace(audioPath) || !File.Exists(audioPath))
+        {
+            return false;
+        }
+
+        try
+        {
+            audioPlayer ??= new MediaPlayer();
+            audioPlayer.Stop();
+            audioPlayer.Open(new Uri(audioPath, UriKind.Absolute));
+            audioPlayer.Volume = Math.Clamp(AudioVolume, 0, 100) / 100.0;
+            audioPlayer.Play();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private void AutoPlayCurrentWord()
@@ -3253,41 +3412,52 @@ public sealed class MainViewModel : ViewModelBase
 
     private void ApplyAccountState(AppState state)
     {
-        User.FullName = state.User.FullName;
-        User.Email = state.User.Email;
-        User.Phone = state.User.Phone;
-        User.Level = state.User.Level;
-        User.Note = state.User.Note;
-        User.AvatarPath = state.User.AvatarPath;
-
-        Decks.Clear();
-        foreach (var deck in state.Decks)
+        isApplyingAccountState = true;
+        try
         {
-            Decks.Add(deck);
-        }
+            User.FullName = state.User.FullName;
+            User.Email = state.User.Email;
+            User.Phone = state.User.Phone;
+            User.Level = state.User.Level;
+            User.Note = state.User.Note;
+            User.AvatarPath = state.User.AvatarPath;
 
-        Words.Clear();
-        foreach (var word in state.Words)
+            Decks.Clear();
+            foreach (var deck in state.Decks)
+            {
+                Decks.Add(deck);
+            }
+
+            Words.Clear();
+            foreach (var word in state.Words)
+            {
+                Words.Add(word);
+            }
+
+            AudioVolume = state.Settings.AudioVolume;
+            DailyReminders = state.Settings.DailyReminders;
+            AutoPlayAudio = state.Settings.AutoPlayAudio;
+            OfflineMode = state.Settings.OfflineMode;
+            IsDarkMode = state.Settings.IsDarkMode;
+            PracticeSessionCount = state.Settings.PracticeSessionCount;
+            SelectedStudyDeck = Decks.FirstOrDefault();
+            CurrentWordIndex = 0;
+            ClearWordEditor();
+            RefreshQuizQuestions();
+            RefreshTodayWord();
+            LoadProfileEditor();
+            OnPropertyChanged(nameof(DashboardGreeting));
+            OnPropertyChanged(nameof(DashboardSubtitle));
+            OnPropertyChanged(nameof(FilteredDecks));
+            OnPropertyChanged(nameof(FilteredWords));
+            OnPropertyChanged(nameof(CurrentStudyWords));
+            OnPropertyChanged(nameof(CurrentWord));
+            OnProgressChanged();
+        }
+        finally
         {
-            Words.Add(word);
+            isApplyingAccountState = false;
         }
-
-        AudioVolume = state.Settings.AudioVolume;
-        DailyReminders = state.Settings.DailyReminders;
-        AutoPlayAudio = state.Settings.AutoPlayAudio;
-        OfflineMode = state.Settings.OfflineMode;
-        IsDarkMode = state.Settings.IsDarkMode;
-        PracticeSessionCount = state.Settings.PracticeSessionCount;
-        SelectedStudyDeck = Decks.FirstOrDefault();
-        CurrentWordIndex = 0;
-        ClearWordEditor();
-        RefreshQuizQuestions();
-        RefreshTodayWord();
-        OnPropertyChanged(nameof(FilteredDecks));
-        OnPropertyChanged(nameof(FilteredWords));
-        OnPropertyChanged(nameof(CurrentStudyWords));
-        OnPropertyChanged(nameof(CurrentWord));
-        OnProgressChanged();
     }
 
     private void ClearCurrentUser()
@@ -3300,6 +3470,8 @@ public sealed class MainViewModel : ViewModelBase
         User.AvatarPath = "";
         ClearLearningData();
         LoadProfileEditor();
+        OnPropertyChanged(nameof(DashboardGreeting));
+        OnPropertyChanged(nameof(DashboardSubtitle));
     }
 
     private void ClearLearningData()

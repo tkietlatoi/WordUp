@@ -133,6 +133,12 @@
                     <TextBox Style="{StaticResource TextInput}" Text="{Binding NewLessonMeaning, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,10" />
                     <TextBlock Text="Loại từ" Style="{StaticResource MutedText}" />
                     <TextBox Style="{StaticResource TextInput}" Text="{Binding NewLessonType, UpdateSourceTrigger=PropertyChanged}" Margin="0,5,0,12" />
+                    <TextBlock Text="Âm thanh riêng" Style="{StaticResource MutedText}" />
+                    <Grid Margin="0,5,0,12">
+                        <TextBox Style="{StaticResource TextInput}" Text="{Binding NewLessonAudioFileName, Mode=OneWay}" IsReadOnly="True" Margin="0,0,130,0" />
+                        <Button Content="Chọn" Style="{StaticResource PrimaryButton}" Width="62" Height="36" HorizontalAlignment="Right" Margin="0,0,64,0" Command="{Binding ImportLessonWordAudioCommand}" />
+                        <Button Content="Bỏ" Style="{StaticResource OutlineButton}" Width="56" Height="36" HorizontalAlignment="Right" Command="{Binding ClearLessonWordAudioCommand}" />
+                    </Grid>
                     <Button Style="{StaticResource PrimaryButton}" HorizontalAlignment="Right" Command="{Binding AddLessonWordCommand}">
                         <TextBlock Text="{Binding LessonWordEditorButtonText}" />
                     </Button>
@@ -173,6 +179,7 @@
                                             <TextBlock Text="{Binding Ipa}" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
                                             <TextBlock Text="{Binding VietnameseMeaning}" Style="{StaticResource MutedText}" Margin="0,4,0,0" />
                                             <TextBlock Text="{Binding Type}" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
+                                            <TextBlock Text="{Binding AudioFileName, StringFormat=Âm thanh: {0}}" Style="{StaticResource MutedText}" Margin="0,2,0,0" />
                                         </StackPanel>
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                             <Button Style="{StaticResource PrimaryButton}" Background="#5F74DC" Width="52" Height="32" Padding="8,0" Margin="0,0,7,0" Command="{Binding DataContext.EditLessonWordCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}">
@@ -222,7 +229,6 @@
                         <Border Background="#F0EEFA" CornerRadius="16" Padding="12,5" HorizontalAlignment="Center" Margin="0,14,0,18">
                             <TextBlock Text="{Binding CurrentWord.Type}" Style="{StaticResource MutedText}" />
                         </Border>
-                        <TextBlock Text="{Binding CurrentWord.Example}" TextAlignment="Center" TextWrapping="Wrap" />
                     </StackPanel>
 
                     <TextBlock IsHitTestVisible="False" Text="{Binding FlashcardHint}" Style="{StaticResource MutedText}" HorizontalAlignment="Center" VerticalAlignment="Bottom" />

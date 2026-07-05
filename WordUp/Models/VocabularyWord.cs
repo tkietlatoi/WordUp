@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
 
 namespace WordUp.Models;
@@ -11,6 +12,7 @@ public sealed class VocabularyWord : INotifyPropertyChanged
     private string meaning = "";
     private string vietnameseMeaning = "";
     private string example = "";
+    private string audioPath = "";
     private string lessonId = "";
     private int masteryLevel;
     private int reviewCount;
@@ -60,6 +62,26 @@ public sealed class VocabularyWord : INotifyPropertyChanged
         get => example;
         set => SetProperty(ref example, value);
     }
+
+    public string AudioPath
+    {
+        get => audioPath;
+        set
+        {
+            if (audioPath == value)
+            {
+                return;
+            }
+
+            audioPath = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AudioPath)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(AudioFileName)));
+        }
+    }
+
+    public string AudioFileName => string.IsNullOrWhiteSpace(AudioPath)
+        ? "Chưa có âm thanh"
+        : Path.GetFileName(AudioPath);
 
     public string LessonId
     {
