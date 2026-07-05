@@ -11,7 +11,6 @@ public sealed class VocabularyWord : INotifyPropertyChanged
     private string type = "";
     private string meaning = "";
     private string vietnameseMeaning = "";
-    private string example = "";
     private string audioPath = "";
     private string lessonId = "";
     private int masteryLevel;
@@ -55,12 +54,6 @@ public sealed class VocabularyWord : INotifyPropertyChanged
     {
         get => vietnameseMeaning;
         set => SetProperty(ref vietnameseMeaning, value);
-    }
-
-    public string Example
-    {
-        get => example;
-        set => SetProperty(ref example, value);
     }
 
     public string AudioPath

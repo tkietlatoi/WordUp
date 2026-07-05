@@ -12,6 +12,7 @@ public sealed class Deck : INotifyPropertyChanged
     private int totalWords;
     private DateTime createdAt = DateTime.Now;
     private DateTime updatedAt = DateTime.Now;
+    private bool isPracticeSelected;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -76,6 +77,12 @@ public sealed class Deck : INotifyPropertyChanged
                 OnPropertyChanged(nameof(UpdatedAtText));
             }
         }
+    }
+
+    public bool IsPracticeSelected
+    {
+        get => isPracticeSelected;
+        set => SetProperty(ref isPracticeSelected, value);
     }
 
     [JsonIgnore]

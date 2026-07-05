@@ -150,7 +150,7 @@ public sealed class LocalStorageService
         using var connection = OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT full_name, email, phone, level, note, avatar_path, password_hash
+            SELECT full_name, email, phone, note, avatar_path, password_hash
             FROM accounts
             WHERE lower(email) = lower($contact)
                OR phone = $contact
@@ -159,7 +159,7 @@ public sealed class LocalStorageService
         command.Parameters.AddWithValue("$contact", trimmedContact);
 
         using var reader = command.ExecuteReader();
-        if (!reader.Read() || !VerifyPassword(password, reader.GetString(6)))
+        if (!reader.Read() || !VerifyPassword(password, reader.GetString(5)))
         {
             return false;
         }
@@ -167,9 +167,8 @@ public sealed class LocalStorageService
         targetUser.FullName = reader.GetString(0);
         targetUser.Email = reader.GetString(1);
         targetUser.Phone = reader.GetString(2);
-        targetUser.Level = reader.GetString(3);
-        targetUser.Note = reader.GetString(4);
-        targetUser.AvatarPath = reader.GetString(5);
+        targetUser.Note = reader.GetString(3);
+        targetUser.AvatarPath = reader.GetString(4);
         return true;
     }
 
@@ -211,8 +210,7 @@ public sealed class LocalStorageService
         using var command = connection.CreateCommand();
         command.CommandText = """
             UPDATE accounts
-            SET password_hash = $passwordHash,
-                updated_at = CURRENT_TIMESTAMP
+            SET password_hash = $passwordHash
             WHERE lower(email) = lower($email);
             """;
         command.Parameters.AddWithValue("$email", email.Trim());
@@ -273,12 +271,9 @@ public sealed class LocalStorageService
                 email TEXT PRIMARY KEY COLLATE NOCASE,
                 full_name TEXT NOT NULL,
                 phone TEXT NOT NULL DEFAULT '',
-                level TEXT NOT NULL DEFAULT '',
                 note TEXT NOT NULL DEFAULT '',
                 avatar_path TEXT NOT NULL DEFAULT '',
-                password_hash TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                password_hash TEXT NOT NULL
             );
 
             CREATE TABLE IF NOT EXISTS lessons (
@@ -376,11 +371,13 @@ public sealed class LocalStorageService
             CREATE INDEX IF NOT EXISTS ix_favorites_account_email ON favorites(account_email);
             """;
         command.ExecuteNonQuery();
+        EnsureCleanAccountsSchema(connection);
         EnsureAccountNoteColumn(connection);
         EnsureAccountAvatarPathColumn(connection);
         EnsureSettingsDarkModeColumn(connection);
         EnsureSettingsPracticeSessionCountColumn(connection);
         EnsureLessonWordAudioPathColumn(connection);
+        EnsureCleanLessonWordsSchema(connection);
         BackfillLegacyWordData(connection);
         ClearSharedAccountAvatars(connection);
     }
@@ -456,11 +453,47 @@ public sealed class LocalStorageService
         command.CommandText = """
             SELECT email
             FROM accounts
-            ORDER BY datetime(updated_at) DESC, datetime(created_at) DESC, lower(email)
+            ORDER BY lower(email)
             LIMIT 1;
             """;
 
         return command.ExecuteScalar() as string ?? "";
+    }
+
+    private static void EnsureCleanAccountsSchema(SqliteConnection connection)
+    {
+        if (!TableExists(connection, "accounts"))
+        {
+            return;
+        }
+
+        using (var deleteCommand = connection.CreateCommand())
+        {
+            deleteCommand.CommandText = "DELETE FROM accounts WHERE lower(email) = lower($email);";
+            deleteCommand.Parameters.AddWithValue("$email", "student@university.edu");
+            deleteCommand.ExecuteNonQuery();
+        }
+
+        if (ColumnExists(connection, "accounts", "level"))
+        {
+            using var dropCommand = connection.CreateCommand();
+            dropCommand.CommandText = "ALTER TABLE accounts DROP COLUMN level;";
+            dropCommand.ExecuteNonQuery();
+        }
+
+        if (ColumnExists(connection, "accounts", "created_at"))
+        {
+            using var dropCommand = connection.CreateCommand();
+            dropCommand.CommandText = "ALTER TABLE accounts DROP COLUMN created_at;";
+            dropCommand.ExecuteNonQuery();
+        }
+
+        if (ColumnExists(connection, "accounts", "updated_at"))
+        {
+            using var dropCommand = connection.CreateCommand();
+            dropCommand.CommandText = "ALTER TABLE accounts DROP COLUMN updated_at;";
+            dropCommand.ExecuteNonQuery();
+        }
     }
 
     private static void EnsureAccountNoteColumn(SqliteConnection connection)
@@ -519,6 +552,16 @@ public sealed class LocalStorageService
         }
 
         AddLessonWordColumnIfMissing(connection, "audio_path", "TEXT NOT NULL DEFAULT ''");
+    }
+
+    private static void EnsureCleanLessonWordsSchema(SqliteConnection connection)
+    {
+        if (TableExists(connection, "lesson_words") && ColumnExists(connection, "lesson_words", "example"))
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = "ALTER TABLE lesson_words DROP COLUMN example;";
+            command.ExecuteNonQuery();
+        }
     }
 
     private static void BackfillLegacyWordData(SqliteConnection connection)
@@ -593,21 +636,20 @@ public sealed class LocalStorageService
 
         using var selectCommand = connection.CreateCommand();
         selectCommand.CommandText = """
-            SELECT email, avatar_path, updated_at
+            SELECT email, avatar_path
             FROM accounts
             WHERE avatar_path <> ''
-            ORDER BY lower(avatar_path), datetime(updated_at), lower(email);
+            ORDER BY lower(avatar_path), lower(email);
             """;
 
-        var rows = new List<(string Email, string AvatarPath, DateTime UpdatedAt)>();
+        var rows = new List<(string Email, string AvatarPath)>();
         using (var reader = selectCommand.ExecuteReader())
         {
             while (reader.Read())
             {
                 rows.Add((
                     reader.GetString(0),
-                    reader.GetString(1),
-                    ParseDateTime(reader.GetString(2))));
+                    reader.GetString(1)));
             }
         }
 
@@ -616,7 +658,6 @@ public sealed class LocalStorageService
             .Where(group => group.Count() > 1)
             .SelectMany(group => group
                 .OrderBy(row => row.Email.Length)
-                .ThenBy(row => row.UpdatedAt)
                 .ThenBy(row => row.Email, StringComparer.OrdinalIgnoreCase)
                 .Skip(1)
                 .Select(row => row.Email))
@@ -627,8 +668,7 @@ public sealed class LocalStorageService
             using var updateCommand = connection.CreateCommand();
             updateCommand.CommandText = """
                 UPDATE accounts
-                SET avatar_path = '',
-                    updated_at = CURRENT_TIMESTAMP
+                SET avatar_path = ''
                 WHERE lower(email) = lower($email);
                 """;
             updateCommand.Parameters.AddWithValue("$email", email);
@@ -682,7 +722,7 @@ public sealed class LocalStorageService
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT full_name, email, phone, level, note, avatar_path
+            SELECT full_name, email, phone, note, avatar_path
             FROM accounts
             WHERE lower(email) = lower($email)
             LIMIT 1;
@@ -700,9 +740,8 @@ public sealed class LocalStorageService
             FullName = reader.GetString(0),
             Email = reader.GetString(1),
             Phone = reader.GetString(2),
-            Level = reader.GetString(3),
-            Note = reader.GetString(4),
-            AvatarPath = reader.GetString(5)
+            Note = reader.GetString(3),
+            AvatarPath = reader.GetString(4)
         };
     }
 
@@ -896,7 +935,7 @@ public sealed class LocalStorageService
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT lw.lesson_id, lw.word, lw.ipa, lw.type, lw.meaning, lw.vietnamese_meaning, lw.example,
+            SELECT lw.lesson_id, lw.word, lw.ipa, lw.type, lw.meaning, lw.vietnamese_meaning,
                    COALESCE(lw.mastery_level, 0), COALESCE(lw.review_count, 0),
                    COALESCE(lw.correct_quiz_count, 0), COALESCE(lw.incorrect_quiz_count, 0),
                    COALESCE(lw.practice_correct_quiz_count, 0), COALESCE(lw.practice_incorrect_quiz_count, 0),
@@ -921,16 +960,16 @@ public sealed class LocalStorageService
                 Meaning = reader.GetString(4),
                 VietnameseMeaning = reader.GetString(5),
                 AudioPath = "",
-                MasteryLevel = reader.GetInt32(7),
-                ReviewCount = reader.GetInt32(8),
-                CorrectQuizCount = reader.GetInt32(9),
-                IncorrectQuizCount = reader.GetInt32(10),
-                PracticeCorrectQuizCount = reader.GetInt32(11),
-                PracticeIncorrectQuizCount = reader.GetInt32(12),
-                IsFavorite = reader.GetInt32(13) == 1,
-                LastReviewedAt = reader.IsDBNull(14) ? null : ParseDateTime(reader.GetString(14)),
-                LastPracticeAt = reader.IsDBNull(15) ? null : ParseDateTime(reader.GetString(15)),
-                NextReviewDate = ParseDateTime(reader.GetString(16))
+                MasteryLevel = reader.GetInt32(6),
+                ReviewCount = reader.GetInt32(7),
+                CorrectQuizCount = reader.GetInt32(8),
+                IncorrectQuizCount = reader.GetInt32(9),
+                PracticeCorrectQuizCount = reader.GetInt32(10),
+                PracticeIncorrectQuizCount = reader.GetInt32(11),
+                IsFavorite = reader.GetInt32(12) == 1,
+                LastReviewedAt = reader.IsDBNull(13) ? null : ParseDateTime(reader.GetString(13)),
+                LastPracticeAt = reader.IsDBNull(14) ? null : ParseDateTime(reader.GetString(14)),
+                NextReviewDate = ParseDateTime(reader.GetString(15))
             });
         }
 
@@ -1013,20 +1052,17 @@ public sealed class LocalStorageService
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
-            INSERT INTO accounts (email, full_name, phone, level, note, avatar_path, password_hash, updated_at)
-            VALUES ($email, $fullName, $phone, $level, $note, $avatarPath, $passwordHash, CURRENT_TIMESTAMP)
+            INSERT INTO accounts (email, full_name, phone, note, avatar_path, password_hash)
+            VALUES ($email, $fullName, $phone, $note, $avatarPath, $passwordHash)
             ON CONFLICT(email) DO UPDATE SET
                 full_name = excluded.full_name,
                 phone = excluded.phone,
-                level = excluded.level,
                 note = excluded.note,
-                avatar_path = excluded.avatar_path,
-                updated_at = CURRENT_TIMESTAMP;
+                avatar_path = excluded.avatar_path;
             """;
         command.Parameters.AddWithValue("$email", user.Email.Trim());
         command.Parameters.AddWithValue("$fullName", user.FullName.Trim());
         command.Parameters.AddWithValue("$phone", user.Phone.Trim());
-        command.Parameters.AddWithValue("$level", user.Level.Trim());
         command.Parameters.AddWithValue("$note", user.Note.Trim());
         command.Parameters.AddWithValue("$avatarPath", user.AvatarPath.Trim());
         command.Parameters.AddWithValue("$passwordHash", passwordHash);
@@ -1088,7 +1124,6 @@ public sealed class LocalStorageService
             long lessonWordId;
             var useLegacyLessonWordColumns = ColumnExists(connection, "lesson_words", "next_review_date")
                 || ColumnExists(connection, "lesson_words", "mastery_level")
-                || ColumnExists(connection, "lesson_words", "example")
                 || ColumnExists(connection, "lesson_words", "is_favorite");
             using (var command = connection.CreateCommand())
             {
@@ -1096,12 +1131,12 @@ public sealed class LocalStorageService
                 command.CommandText = useLegacyLessonWordColumns
                     ? """
                         INSERT INTO lesson_words (
-                            lesson_id, word, ipa, type, meaning, vietnamese_meaning, example,
+                            lesson_id, word, ipa, type, meaning, vietnamese_meaning,
                             mastery_level, review_count, correct_quiz_count, incorrect_quiz_count,
                             practice_correct_quiz_count, practice_incorrect_quiz_count, is_favorite,
                             last_reviewed_at, last_practice_at, next_review_date, audio_path)
                         VALUES (
-                            $lessonId, $word, $ipa, $type, $meaning, $vietnameseMeaning, $example,
+                            $lessonId, $word, $ipa, $type, $meaning, $vietnameseMeaning,
                             $masteryLevel, $reviewCount, $correctQuizCount, $incorrectQuizCount,
                             $practiceCorrectQuizCount, $practiceIncorrectQuizCount, $isFavorite,
                             $lastReviewedAt, $lastPracticeAt, $nextReviewDate, $audioPath);
@@ -1120,7 +1155,6 @@ public sealed class LocalStorageService
                 command.Parameters.AddWithValue("$type", word.Type);
                 command.Parameters.AddWithValue("$meaning", word.Meaning);
                 command.Parameters.AddWithValue("$vietnameseMeaning", word.VietnameseMeaning);
-                command.Parameters.AddWithValue("$example", word.Example);
                 command.Parameters.AddWithValue("$masteryLevel", word.MasteryLevel);
                 command.Parameters.AddWithValue("$reviewCount", word.ReviewCount);
                 command.Parameters.AddWithValue("$correctQuizCount", word.CorrectQuizCount);

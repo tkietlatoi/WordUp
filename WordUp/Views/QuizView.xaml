@@ -99,6 +99,50 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="PracticeLessonCheckBox" TargetType="CheckBox">
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="HorizontalAlignment" Value="Stretch" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Border x:Name="Root" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10">
+                            <Grid Margin="{TemplateBinding Padding}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="22" />
+                                    <ColumnDefinition />
+                                </Grid.ColumnDefinitions>
+                                <Border Width="15" Height="15" CornerRadius="3" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1.5" Background="{DynamicResource SurfaceBrush}" VerticalAlignment="Center">
+                                    <Path x:Name="Tick" Data="M 3 7 L 6 10 L 12 3" Stroke="{DynamicResource IndigoBrush}" StrokeThickness="2" StrokeEndLineCap="Round" StrokeStartLineCap="Round" Visibility="Collapsed" />
+                                </Border>
+                                <ContentPresenter Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource IndigoBrush}" />
+                                <Setter TargetName="Root" Property="Background" Value="{DynamicResource SurfaceBrush}" />
+                                <Setter TargetName="Tick" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource IndigoBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
 
     <Grid Margin="0">
@@ -107,7 +151,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Grid Background="{DynamicResource SurfaceBrush}">
-            <TextBlock Text="Luyện tập" Style="{StaticResource PageTitleText}" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding QuizHeaderTitleText}" Style="{StaticResource PageTitleText}" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center" />
         </Grid>
 
         <StackPanel Grid.Row="1" Margin="22,18,22,22" Visibility="{Binding IsQuizIntroVisible, Converter={StaticResource BoolToVisibility}}">
@@ -252,26 +296,28 @@
                     <Grid Margin="0,0,0,8">
                         <TextBlock Text="Số từ" FontWeight="SemiBold" VerticalAlignment="Center" />
                     </Grid>
-                    <Grid Margin="0,0,0,12">
+                    <Grid Margin="0,0,0,12" HorizontalAlignment="Center" Width="208">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="44" />
-                            <ColumnDefinition />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="104" />
+                            <ColumnDefinition Width="8" />
                             <ColumnDefinition Width="44" />
                         </Grid.ColumnDefinitions>
-                        <Button Content="-" Style="{StaticResource OutlineButton}" Width="40" Height="36" Padding="0" Command="{Binding DecreaseQuizQuestionLimitCommand}" />
-                        <TextBox Grid.Column="1" Style="{StaticResource TextInput}" Text="{Binding QuizQuestionLimit, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" HorizontalContentAlignment="Center" FontSize="16" FontWeight="SemiBold" Margin="8,0" />
-                        <Button Grid.Column="2" Content="+" Style="{StaticResource OutlineButton}" Width="40" Height="36" Padding="0" Command="{Binding IncreaseQuizQuestionLimitCommand}" />
+                        <Button Content="-" Grid.Column="0" Style="{StaticResource OutlineButton}" Width="44" Height="36" Padding="0" Command="{Binding DecreaseQuizQuestionLimitCommand}" />
+                        <TextBox Grid.Column="2" Style="{StaticResource TextInput}" Height="36" Text="{Binding QuizQuestionLimit, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" FontSize="16" FontWeight="SemiBold" Margin="0" />
+                        <Button Content="+" Grid.Column="4" Style="{StaticResource OutlineButton}" Width="44" Height="36" Padding="0" Command="{Binding IncreaseQuizQuestionLimitCommand}" />
                     </Grid>
                     <TextBlock Text="Tối thiểu 10 từ." Style="{StaticResource MutedText}" Margin="0,-4,0,10" />
 
                     <TextBlock Text="Nguồn từ luyện tập" FontWeight="SemiBold" Margin="0,0,0,8" />
-                    <RadioButton Content="Những từ đã học" GroupName="PracticeWordSource" Style="{StaticResource PracticeSourceRadio}" IsChecked="{Binding IsLearnedPracticeSource, Mode=OneWay}" Command="{Binding SelectPracticeWordSourceCommand}" CommandParameter="Learned" />
-                    <RadioButton Content="Từ đã đánh dấu sao" GroupName="PracticeWordSource" Style="{StaticResource PracticeSourceRadio}" IsChecked="{Binding IsFavoritePracticeSource, Mode=OneWay}" Command="{Binding SelectPracticeWordSourceCommand}" CommandParameter="Favorite" />
-                    <RadioButton Content="Tất cả các từ" GroupName="PracticeWordSource" Style="{StaticResource PracticeSourceRadio}" IsChecked="{Binding IsAllPracticeSource, Mode=OneWay}" Command="{Binding SelectPracticeWordSourceCommand}" CommandParameter="All" Margin="0,0,0,16" />
-                    <RadioButton Content="Trong bài học" GroupName="PracticeWordSource" Style="{StaticResource PracticeSourceRadio}" IsChecked="{Binding IsLessonPracticeSource, Mode=OneWay}" Command="{Binding SelectPracticeWordSourceCommand}" CommandParameter="Lesson" Margin="0,0,0,16" />
+                    <RadioButton Content="Những từ đã học" GroupName="PracticeWordSource" Style="{StaticResource PracticeSourceRadio}" IsChecked="{Binding IsLearnedPracticeSource, Mode=TwoWay}" />
+                    <RadioButton Content="Từ đã đánh dấu sao" GroupName="PracticeWordSource" Style="{StaticResource PracticeSourceRadio}" IsChecked="{Binding IsFavoritePracticeSource, Mode=TwoWay}" />
+                    <RadioButton Content="Tất cả các từ" GroupName="PracticeWordSource" Style="{StaticResource PracticeSourceRadio}" IsChecked="{Binding IsAllPracticeSource, Mode=TwoWay}" Margin="0,0,0,16" />
+                    <RadioButton Content="Trong bài học" GroupName="PracticeWordSource" Style="{StaticResource PracticeSourceRadio}" IsChecked="{Binding IsLessonPracticeSource, Mode=TwoWay}" Margin="0,0,0,16" />
 
                     <StackPanel Visibility="{Binding IsLessonPracticeSource, Converter={StaticResource BoolToVisibility}}" Margin="0,0,0,14">
-                        <TextBlock Text="Chọn bài học" FontWeight="SemiBold" Margin="0,0,0,8" />
+                        <TextBlock Text="Chọn một hoặc nhiều bài học" FontWeight="SemiBold" Margin="0,0,0,8" />
                         <Border Background="{DynamicResource HoverSurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="10" Padding="8" MaxHeight="170">
                             <ScrollViewer VerticalScrollBarVisibility="Auto">
                                 <ItemsControl ItemsSource="{Binding Decks}">
@@ -282,9 +328,7 @@
                                     </ItemsControl.ItemContainerStyle>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Button Style="{StaticResource OutlineButton}" Height="38" Margin="0,0,0,8" HorizontalContentAlignment="Left" Command="{Binding DataContext.SelectPracticeLessonCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding Id}">
-                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-                                            </Button>
+                                            <CheckBox Content="{Binding Name}" IsChecked="{Binding IsPracticeSelected, Mode=TwoWay}" Style="{StaticResource PracticeLessonCheckBox}" />
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>

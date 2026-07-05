@@ -16,6 +16,10 @@ public sealed class QuizService
     {
         var wordList = words
             .Where(word => !string.IsNullOrWhiteSpace(word.Word) && !string.IsNullOrWhiteSpace(word.Meaning))
+            .ToList();
+
+        Shuffle(wordList);
+        wordList = wordList
             .Take(Math.Clamp(questionLimit, 10, 50))
             .ToList();
 
@@ -75,5 +79,14 @@ public sealed class QuizService
             CorrectIndex = correctIndex,
             SourceWord = word
         };
+    }
+
+    private static void Shuffle<T>(IList<T> items)
+    {
+        for (var i = items.Count - 1; i > 0; i--)
+        {
+            var j = Random.Shared.Next(i + 1);
+            (items[i], items[j]) = (items[j], items[i]);
+        }
     }
 }

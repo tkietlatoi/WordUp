@@ -218,7 +218,7 @@
                     <Button Style="{StaticResource FlashcardFlipButton}" Command="{Binding FlipFlashcardCommand}" />
 
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Panel.ZIndex="2">
-                        <Button Content="🔊" Style="{StaticResource StudyIconButton}" Foreground="{StaticResource IndigoBrush}" Margin="0,0,4,0" ToolTip="Nghe phát âm" Command="{Binding SpeakCurrentWordCommand}" />
+                        <Button Content="🔊" FontFamily="Segoe UI Emoji" Style="{StaticResource StudyIconButton}" Foreground="{StaticResource IndigoBrush}" Margin="0,0,4,0" ToolTip="Nghe phát âm" Command="{Binding SpeakCurrentWordCommand}" />
                         <Button Content="{Binding StudyFavoriteIcon}" Style="{StaticResource StudyIconButton}" Foreground="{Binding StudyFavoriteForeground}" ToolTip="Yêu thích" Command="{Binding ToggleCurrentFavoriteCommand}" />
                     </StackPanel>
 

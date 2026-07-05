@@ -11,7 +11,6 @@ public sealed class UserProfile : INotifyPropertyChanged
     private string fullName = "";
     private string email = "";
     private string phone = "";
-    private string level = "";
     private string note = "";
     private string avatarPath = "";
 
@@ -39,12 +38,6 @@ public sealed class UserProfile : INotifyPropertyChanged
     {
         get => phone;
         set => SetProperty(ref phone, value);
-    }
-
-    public string Level
-    {
-        get => level;
-        set => SetProperty(ref level, value);
     }
 
     public string Note

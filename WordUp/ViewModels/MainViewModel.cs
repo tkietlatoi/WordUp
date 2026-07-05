@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.IO.Compression;
 using System.Text;
@@ -88,7 +89,6 @@ public sealed class MainViewModel : ViewModelBase
     private string editorType = "";
     private string editorMeaning = "";
     private string editorVietnameseMeaning = "";
-    private string editorExample = "";
     private string wordManagerMessage = "Chọn một dòng để sửa, hoặc nhập thông tin để thêm từ mới.";
     private string loginEmail = "";
     private string loginPassword = "";
@@ -130,6 +130,10 @@ public sealed class MainViewModel : ViewModelBase
         User = savedState.User;
         Decks = new ObservableCollection<Deck>(savedState.Decks);
         Words = new ObservableCollection<VocabularyWord>(savedState.Words);
+        foreach (var deck in Decks)
+        {
+            AttachPracticeLessonTracking(deck);
+        }
         EnsureLessonIds();
         NewLessonWords = new ObservableCollection<VocabularyWord>();
         QuizQuestions = new ObservableCollection<QuizQuestion>(quizService.CreateQuestions(Words));
@@ -385,7 +389,6 @@ public sealed class MainViewModel : ViewModelBase
                 EditorType = value.Type;
                 EditorMeaning = value.Meaning;
                 EditorVietnameseMeaning = value.VietnameseMeaning;
-                EditorExample = value.Example;
                 WordManagerMessage = $"Đang sửa {value.Word}.";
             }
         }
@@ -437,12 +440,6 @@ public sealed class MainViewModel : ViewModelBase
     {
         get => editorVietnameseMeaning;
         set => SetProperty(ref editorVietnameseMeaning, value);
-    }
-
-    public string EditorExample
-    {
-        get => editorExample;
-        set => SetProperty(ref editorExample, value);
     }
 
     public string WordManagerMessage
@@ -980,7 +977,6 @@ public sealed class MainViewModel : ViewModelBase
                 OnPropertyChanged(nameof(IsAllPracticeSource));
                 OnPropertyChanged(nameof(IsLessonPracticeSource));
                 OnPropertyChanged(nameof(PracticeWordSourceText));
-                OnPropertyChanged(nameof(SelectedPracticeLessonName));
                 OnPropertyChanged(nameof(LearnedPracticeSourceBorder));
                 OnPropertyChanged(nameof(FavoritePracticeSourceBorder));
                 OnPropertyChanged(nameof(AllPracticeSourceBorder));
@@ -1027,7 +1023,7 @@ public sealed class MainViewModel : ViewModelBase
     {
         "Favorite" => "Từ đã đánh dấu sao",
         "All" => "Tất cả các từ",
-        "Lesson" => SelectedPracticeLessonName,
+        "Lesson" => "Trong bài học",
         _ => "Những từ đã học"
     };
 
@@ -1161,8 +1157,19 @@ public sealed class MainViewModel : ViewModelBase
     public double QuizProgressValue => QuizQuestions.Count == 0 ? 0 : ((CurrentQuizIndex + 1) / (double)QuizQuestions.Count) * 100;
     public string QuizElapsedTimeText => FormatQuizTime(QuizElapsedTime);
     public string QuizCompletedTimeText => FormatQuizTime(QuizCompletedTime);
+    public string QuizHeaderTitleText => IsPracticeQuiz ? "Luyện tập" : "Bài kiểm tra";
+    public string QuizResultTitleText => IsPracticeQuiz
+        ? "Kết quả bài luyện tập"
+        : "Kết quả bài học";
+    public string QuizCompletionMessage => IsPracticeQuiz
+        ? "Bạn đã hoàn thành bài luyện tập."
+        : "Bạn đã hoàn thành bài kiểm tra.";
+    public string QuizResultBackButtonText => IsPracticeQuiz
+        ? "Quay lại Luyện tập"
+        : "Quay lại bài học";
     public int AnsweredQuizCount => QuizQuestions.Count(question => question.IsAnswered);
     public bool IsQuizSubmitted => QuizQuestions.Count > 0 && QuizQuestions.All(question => question.IsSubmitted);
+    public bool IsPracticeQuiz => isPracticeQuiz;
     public string IncompleteQuizSubmitText => $"Bạn đã làm {AnsweredQuizCount}/{QuizQuestions.Count} câu. Bạn muốn quay lại làm tiếp hay nộp bài luôn?";
     public int PracticeTotalWords => Words.Count;
     public int PracticeReviewedWords => Words.Count(word => GetPracticeAttemptCount(word) > 0);
@@ -1452,6 +1459,7 @@ public sealed class MainViewModel : ViewModelBase
         pendingDeleteLesson = null;
         OnDeleteLessonDialogChanged();
 
+        DetachPracticeLessonTracking(lesson);
         Decks.Remove(lesson);
         foreach (var word in Words.Where(word => word.LessonId == lesson.Id).ToList())
         {
@@ -1738,6 +1746,7 @@ public sealed class MainViewModel : ViewModelBase
             {
                 lesson.CreatedAt = lesson.UpdatedAt;
                 Decks.Add(lesson);
+                AttachPracticeLessonTracking(lesson);
             }
             else if (!HaveSameLessonWords(existingWords, NewLessonWords))
             {
@@ -1854,7 +1863,6 @@ public sealed class MainViewModel : ViewModelBase
             Type = word.Type,
             Meaning = word.Meaning,
             VietnameseMeaning = word.VietnameseMeaning,
-            Example = word.Example,
             AudioPath = word.AudioPath,
             LessonId = word.LessonId,
             MasteryLevel = word.MasteryLevel,
@@ -1897,7 +1905,6 @@ public sealed class MainViewModel : ViewModelBase
             && string.Equals(left.Type, right.Type, StringComparison.Ordinal)
             && string.Equals(left.Meaning, right.Meaning, StringComparison.Ordinal)
             && string.Equals(left.VietnameseMeaning, right.VietnameseMeaning, StringComparison.Ordinal)
-            && string.Equals(left.Example, right.Example, StringComparison.Ordinal)
             && string.Equals(left.AudioPath, right.AudioPath, StringComparison.Ordinal)
             && left.MasteryLevel == right.MasteryLevel
             && left.ReviewCount == right.ReviewCount
@@ -1969,7 +1976,6 @@ public sealed class MainViewModel : ViewModelBase
         var hasIpa = LooksLikeIpa(parts[1]);
         var meaningIndex = hasIpa ? 2 : 1;
         var typeIndex = hasIpa ? 3 : 2;
-        var exampleIndex = hasIpa ? 4 : 3;
 
         return new VocabularyWord
         {
@@ -1977,8 +1983,7 @@ public sealed class MainViewModel : ViewModelBase
             Ipa = hasIpa ? parts[1] : "",
             Meaning = parts.Length > meaningIndex ? parts[meaningIndex] : parts[1],
             VietnameseMeaning = parts.Length > meaningIndex ? parts[meaningIndex] : parts[1],
-            Type = parts.Length > typeIndex ? parts[typeIndex] : "word",
-            Example = parts.Length > exampleIndex ? parts[exampleIndex] : ""
+            Type = parts.Length > typeIndex ? parts[typeIndex] : "word"
         };
     }
 
@@ -2250,6 +2255,9 @@ public sealed class MainViewModel : ViewModelBase
             : Words.Where(word => word.LessonId == SelectedStudyDeck.Id).ToList();
 
         isPracticeQuiz = false;
+        OnPropertyChanged(nameof(IsPracticeQuiz));
+        OnPropertyChanged(nameof(QuizHeaderTitleText));
+        OnPropertyChanged(nameof(QuizCompletionMessage));
         ResetQuiz(lessonQuizWords, Math.Min(50, lessonQuizWords.Count));
     }
 
@@ -2268,6 +2276,9 @@ public sealed class MainViewModel : ViewModelBase
     {
         IsQuizSettingsOpen = false;
         isPracticeQuiz = true;
+        OnPropertyChanged(nameof(IsPracticeQuiz));
+        OnPropertyChanged(nameof(QuizHeaderTitleText));
+        OnPropertyChanged(nameof(QuizCompletionMessage));
         ResetQuiz(GetPracticeWords().ToList(), QuizQuestionLimit);
     }
 
@@ -2279,16 +2290,17 @@ public sealed class MainViewModel : ViewModelBase
     private void SelectPracticeWordSource(string source)
     {
         PracticeWordSource = source is "Favorite" or "All" or "Lesson" ? source : "Learned";
-
-        if (PracticeWordSource == "Lesson")
-        {
-            EnsurePracticeLessonSelection();
-        }
     }
 
     private void SelectPracticeLesson(string lessonId)
     {
-        PracticeSelectedLessonId = lessonId;
+        var lesson = Decks.FirstOrDefault(deck => deck.Id == lessonId);
+        if (lesson is null)
+        {
+            return;
+        }
+
+        lesson.IsPracticeSelected = !lesson.IsPracticeSelected;
         PracticeWordSource = "Lesson";
         EnsurePracticeLessonSelection();
     }
@@ -2321,13 +2333,44 @@ public sealed class MainViewModel : ViewModelBase
         {
             "Favorite" => Words.Where(word => word.IsFavorite),
             "All" => Words,
-            "Lesson" when !string.IsNullOrWhiteSpace(PracticeSelectedLessonId) =>
-                Words.Where(word => word.LessonId == PracticeSelectedLessonId),
+            "Lesson" => GetSelectedPracticeLessonWords(),
             _ => Words.Where(IsLearnedOrRemembered)
         };
 
         var list = selectedWords.ToList();
         return list.Count > 0 ? list : Words;
+    }
+
+    private IEnumerable<VocabularyWord> GetSelectedPracticeLessonWords()
+    {
+        var selectedDecks = Decks.Where(deck => deck.IsPracticeSelected).ToList();
+        if (selectedDecks.Count == 0)
+        {
+            yield break;
+        }
+
+        var buckets = selectedDecks
+            .Select(deck => Words
+                .Where(word => word.LessonId == deck.Id)
+                .Where(word => !string.IsNullOrWhiteSpace(word.Word) && !string.IsNullOrWhiteSpace(word.Meaning))
+                .OrderBy(_ => Random.Shared.Next())
+                .ToList())
+            .Where(bucket => bucket.Count > 0)
+            .ToList();
+
+        var index = 0;
+        while (buckets.Any(bucket => index < bucket.Count))
+        {
+            foreach (var bucket in buckets)
+            {
+                if (index < bucket.Count)
+                {
+                    yield return bucket[index];
+                }
+            }
+
+            index++;
+        }
     }
 
     private void ReviewCurrentWord(object? parameter)
@@ -2458,6 +2501,7 @@ public sealed class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(IsQuizSubmitted));
         OnPropertyChanged(nameof(QuizScorePercentage));
         OnPropertyChanged(nameof(QuizScoreText));
+        OnPropertyChanged(nameof(QuizCompletionMessage));
         OnPracticeStatsChanged();
         SaveAppState();
         CurrentView = "QuizResult";
@@ -2541,8 +2585,7 @@ public sealed class MainViewModel : ViewModelBase
         {
             FullName = RegisterFullName.Trim(),
             Email = RegisterEmail.Trim(),
-            Phone = RegisterPhone.Trim(),
-            Level = "Học giả"
+            Phone = RegisterPhone.Trim()
         };
 
         if (!storageService.RegisterAccount(registeredUser, RegisterPassword))
@@ -2555,7 +2598,6 @@ public sealed class MainViewModel : ViewModelBase
         User.FullName = registeredUser.FullName;
         User.Email = registeredUser.Email;
         User.Phone = registeredUser.Phone;
-        User.Level = registeredUser.Level;
         User.Note = "";
         User.AvatarPath = "";
         ClearLearningData();
@@ -3004,7 +3046,6 @@ public sealed class MainViewModel : ViewModelBase
         EditorType = "";
         EditorMeaning = "";
         EditorVietnameseMeaning = "";
-        EditorExample = "";
         WordManagerMessage = "Sẵn sàng thêm từ mới.";
     }
 
@@ -3024,8 +3065,7 @@ public sealed class MainViewModel : ViewModelBase
                 Ipa = EditorIpa.Trim(),
                 Type = string.IsNullOrWhiteSpace(EditorType) ? "word" : EditorType.Trim(),
                 Meaning = EditorMeaning.Trim(),
-                VietnameseMeaning = string.IsNullOrWhiteSpace(EditorVietnameseMeaning) ? EditorMeaning.Trim() : EditorVietnameseMeaning.Trim(),
-                Example = EditorExample.Trim()
+                VietnameseMeaning = string.IsNullOrWhiteSpace(EditorVietnameseMeaning) ? EditorMeaning.Trim() : EditorVietnameseMeaning.Trim()
             };
 
             Words.Add(word);
@@ -3039,7 +3079,6 @@ public sealed class MainViewModel : ViewModelBase
             SelectedWord.Type = string.IsNullOrWhiteSpace(EditorType) ? "word" : EditorType.Trim();
             SelectedWord.Meaning = EditorMeaning.Trim();
             SelectedWord.VietnameseMeaning = string.IsNullOrWhiteSpace(EditorVietnameseMeaning) ? EditorMeaning.Trim() : EditorVietnameseMeaning.Trim();
-            SelectedWord.Example = EditorExample.Trim();
             WordManagerMessage = $"Đã cập nhật {SelectedWord.Word}.";
         }
 
@@ -3483,7 +3522,6 @@ public sealed class MainViewModel : ViewModelBase
             User.FullName = state.User.FullName;
             User.Email = state.User.Email;
             User.Phone = state.User.Phone;
-            User.Level = state.User.Level;
             User.Note = state.User.Note;
             User.AvatarPath = state.User.AvatarPath;
 
@@ -3491,6 +3529,7 @@ public sealed class MainViewModel : ViewModelBase
             foreach (var deck in state.Decks)
             {
                 Decks.Add(deck);
+                AttachPracticeLessonTracking(deck);
             }
 
             Words.Clear();
@@ -3533,7 +3572,6 @@ public sealed class MainViewModel : ViewModelBase
         User.FullName = "";
         User.Email = "";
         User.Phone = "";
-        User.Level = "";
         User.Note = "";
         User.AvatarPath = "";
         ClearLearningData();
@@ -3544,6 +3582,10 @@ public sealed class MainViewModel : ViewModelBase
 
     private void ClearLearningData()
     {
+        foreach (var deck in Decks)
+        {
+            DetachPracticeLessonTracking(deck);
+        }
         Decks.Clear();
         Words.Clear();
         PracticeSessionCount = 0;
@@ -3589,11 +3631,34 @@ public sealed class MainViewModel : ViewModelBase
             return;
         }
 
-        if (!string.IsNullOrWhiteSpace(PracticeSelectedLessonId) && Decks.Any(deck => deck.Id == PracticeSelectedLessonId))
+        if (Decks.Any(deck => deck.IsPracticeSelected))
         {
             return;
         }
 
-        PracticeSelectedLessonId = Decks.First().Id;
+        var firstDeck = Decks.First();
+        firstDeck.IsPracticeSelected = true;
+        PracticeSelectedLessonId = firstDeck.Id;
+    }
+
+    private void AttachPracticeLessonTracking(Deck deck)
+    {
+        deck.PropertyChanged += OnPracticeLessonDeckChanged;
+    }
+
+    private void DetachPracticeLessonTracking(Deck deck)
+    {
+        deck.PropertyChanged -= OnPracticeLessonDeckChanged;
+    }
+
+    private void OnPracticeLessonDeckChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(Deck.IsPracticeSelected))
+        {
+            return;
+        }
+
+        PracticeWordSource = "Lesson";
+        EnsurePracticeLessonSelection();
     }
 }

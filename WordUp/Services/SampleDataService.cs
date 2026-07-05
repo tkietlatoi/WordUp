@@ -9,7 +9,6 @@ public sealed class SampleDataService
         FullName = "Nguyễn Văn A",
         Email = "",
         Phone = "+84 987654321",
-        Level = "Học giả",
         Note = "Mục tiêu hôm nay: ôn lại từ vựng và hoàn thành bài học gần nhất."
     };
 
@@ -29,7 +28,6 @@ public sealed class SampleDataService
             Type = "adj.",
             Meaning = "Very bad; appalling.",
             VietnameseMeaning = "Rất tệ; thảm hại.",
-            Example = "The team gave an abysmal performance.",
             MasteryLevel = 1,
             ReviewCount = 2,
             LastReviewedAt = DateTime.Today.AddDays(-1),
@@ -42,7 +40,6 @@ public sealed class SampleDataService
             Type = "adj.",
             Meaning = "Well meaning and kindly.",
             VietnameseMeaning = "Nhân hậu; có lòng tốt.",
-            Example = "She was known as a benevolent leader.",
             MasteryLevel = 3,
             ReviewCount = 5,
             LastReviewedAt = DateTime.Today,
@@ -55,7 +52,6 @@ public sealed class SampleDataService
             Type = "noun",
             Meaning = "A harsh, discordant mixture of sounds.",
             VietnameseMeaning = "Âm thanh hỗn loạn, chói tai.",
-            Example = "The street was filled with a cacophony of horns.",
             MasteryLevel = 5,
             ReviewCount = 9,
             LastReviewedAt = DateTime.Today.AddDays(-10),
@@ -68,7 +64,6 @@ public sealed class SampleDataService
             Type = "adj.",
             Meaning = "Present everywhere.",
             VietnameseMeaning = "Có mặt ở khắp nơi.",
-            Example = "Smartphones are ubiquitous today.",
             MasteryLevel = 2,
             ReviewCount = 3,
             LastReviewedAt = DateTime.Today.AddDays(-3),
