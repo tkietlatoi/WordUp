@@ -52,6 +52,8 @@ public sealed class MainViewModel : ViewModelBase
     private int quizQuestionLimit = 20;
     private string practiceTab = "Practice";
     private string practiceWordSource = "Learned";
+    private int practiceSessionCount;
+    private bool isPracticeQuiz;
     private bool isIncompleteQuizSubmitDialogOpen;
     private bool isDeleteAccountDialogOpen;
     private bool isAvatarDialogOpen;
@@ -128,6 +130,7 @@ public sealed class MainViewModel : ViewModelBase
         AutoPlayAudio = savedState.Settings.AutoPlayAudio;
         OfflineMode = savedState.Settings.OfflineMode;
         IsDarkMode = savedState.Settings.IsDarkMode;
+        practiceSessionCount = savedState.Settings.PracticeSessionCount;
 
         NavigateCommand = new RelayCommand(parameter => Navigate(parameter?.ToString() ?? "Dashboard"));
         SelectTabCommand = new RelayCommand(parameter => SelectTab(parameter?.ToString() ?? "Dashboard"));
@@ -166,6 +169,8 @@ public sealed class MainViewModel : ViewModelBase
         SubmitQuizCommand = new RelayCommand(_ => SubmitQuiz());
         ContinueQuizCommand = new RelayCommand(_ => IsIncompleteQuizSubmitDialogOpen = false);
         ForceSubmitQuizCommand = new RelayCommand(_ => CompleteQuizSubmission());
+        FinishQuizResultCommand = new RelayCommand(_ => FinishQuizResult());
+        ViewPracticeStatsCommand = new RelayCommand(_ => ViewPracticeStats());
         NewWordCommand = new RelayCommand(_ => ClearWordEditor());
         SaveWordCommand = new RelayCommand(_ => SaveWord());
         DeleteWordCommand = new RelayCommand(_ => DeleteSelectedWord());
@@ -254,6 +259,8 @@ public sealed class MainViewModel : ViewModelBase
     public ICommand SubmitQuizCommand { get; }
     public ICommand ContinueQuizCommand { get; }
     public ICommand ForceSubmitQuizCommand { get; }
+    public ICommand FinishQuizResultCommand { get; }
+    public ICommand ViewPracticeStatsCommand { get; }
     public ICommand NewWordCommand { get; }
     public ICommand SaveWordCommand { get; }
     public ICommand DeleteWordCommand { get; }
@@ -921,6 +928,12 @@ public sealed class MainViewModel : ViewModelBase
         "All" => "Tất cả các từ",
         _ => "Những từ đã học"
     };
+
+    public int PracticeSessionCount
+    {
+        get => practiceSessionCount;
+        private set => SetProperty(ref practiceSessionCount, Math.Max(0, value));
+    }
     public Brush LearnedPracticeSourceBorder => GetPracticeSourceBorder(IsLearnedPracticeSource);
     public Brush FavoritePracticeSourceBorder => GetPracticeSourceBorder(IsFavoritePracticeSource);
     public Brush AllPracticeSourceBorder => GetPracticeSourceBorder(IsAllPracticeSource);
@@ -1021,21 +1034,44 @@ public sealed class MainViewModel : ViewModelBase
     public bool IsQuizSubmitted => QuizQuestions.Count > 0 && QuizQuestions.All(question => question.IsSubmitted);
     public string IncompleteQuizSubmitText => $"Bạn đã làm {AnsweredQuizCount}/{QuizQuestions.Count} câu. Bạn muốn quay lại làm tiếp hay nộp bài luôn?";
     public int PracticeTotalWords => Words.Count;
-    public int PracticeReviewedWords => Words.Count(word => word.CorrectQuizCount + word.IncorrectQuizCount > 0);
-    public int PracticeTotalAttempts => Words.Sum(word => word.CorrectQuizCount + word.IncorrectQuizCount);
+    public int PracticeReviewedWords => Words.Count(word => GetPracticeAttemptCount(word) > 0);
+    public int PracticeTotalAttempts => Words.Sum(GetPracticeAttemptCount);
+    public int PracticeCorrectAnswers => Words.Sum(word => word.PracticeCorrectQuizCount);
     public int PracticeMasteryPercentage => PracticeTotalAttempts == 0
         ? 0
-        : (int)Math.Round(Words.Sum(word => word.CorrectQuizCount) / (double)PracticeTotalAttempts * 100);
+        : (int)Math.Round(PracticeCorrectAnswers / (double)PracticeTotalAttempts * 100);
+    public string PracticeMasteryLabel => "Độ chính xác";
     public string PracticeMasteryText => PracticeTotalAttempts == 0
         ? "Chưa có dữ liệu luyện tập"
-        : $"Đúng {Words.Sum(word => word.CorrectQuizCount)}/{PracticeTotalAttempts} lượt trả lời";
+        : $"Tỷ lệ trả lời đúng: {PracticeCorrectAnswers}/{PracticeTotalAttempts} câu";
     public string PracticeCoverageText => $"{PracticeReviewedWords}/{PracticeTotalWords} từ đã xuất hiện trong luyện tập";
+    public int PracticeStudiedTodayWords => Words.Count(word => word.LastPracticeAt?.Date == DateTime.Today);
+    public string PracticeTotalWordsLine => $"Tổng số từ: {PracticeTotalWords}";
+    public string PracticeTotalAttemptsLine => $"Số lượt luyện tập: {PracticeSessionCount}";
+    public string PracticeStudiedTodayLine => $"Số từ học hôm nay: {PracticeStudiedTodayWords}";
+    public string PracticeMasteredWordsLine => $"Tổng số từ đã thuộc: {PracticeGoodWords}";
+    public string PracticeLastReviewedLine => $"Lần luyện gần nhất: {PracticeLastReviewedText}";
+    public string PracticeLastReviewedText => Words
+        .Where(word => word.LastPracticeAt is not null)
+        .Select(word => word.LastPracticeAt!.Value)
+        .DefaultIfEmpty()
+        .Max() is var latest && latest != default
+            ? latest.ToString("HH:mm dd/MM/yyyy")
+            : "Chưa có";
+    public int PracticeWeakWords => CountPracticeBucket(0, 0.5);
+    public int PracticeLearningWords => CountPracticeBucket(0.5, 0.8);
+    public int PracticeGoodWords => CountPracticeBucket(0.8, 1.0);
+    public int PracticeNewWords => Words.Count(word => GetPracticeAttemptCount(word) == 0);
+    public string PracticeNewCountText => $"Mới: {PracticeNewWords} từ";
+    public string PracticeWeakCountText => $"Yếu: {PracticeWeakWords} từ";
+    public string PracticeLearningCountText => $"Đang nhớ: {PracticeLearningWords} từ";
+    public string PracticeGoodCountText => $"Tốt: {PracticeGoodWords} từ";
     public double PracticeWeakBar => GetPracticeBucketPercentage(0, 0.5);
     public double PracticeLearningBar => GetPracticeBucketPercentage(0.5, 0.8);
     public double PracticeGoodBar => GetPracticeBucketPercentage(0.8, 1.0);
     public double PracticeNewBar => PracticeTotalWords == 0
         ? 0
-        : Words.Count(word => word.CorrectQuizCount + word.IncorrectQuizCount == 0) / (double)PracticeTotalWords * 100;
+        : PracticeNewWords / (double)PracticeTotalWords * 100;
     public int WordsDueToday => Words.Count(word => word.NextReviewDate.Date <= DateTime.Today);
     public int MasteredWords => Words.Count(word => word.MasteryLevel >= 5);
     public int StudyStreakDays => CalculateStudyStreakDays();
@@ -1635,8 +1671,11 @@ public sealed class MainViewModel : ViewModelBase
             ReviewCount = word.ReviewCount,
             CorrectQuizCount = word.CorrectQuizCount,
             IncorrectQuizCount = word.IncorrectQuizCount,
+            PracticeCorrectQuizCount = word.PracticeCorrectQuizCount,
+            PracticeIncorrectQuizCount = word.PracticeIncorrectQuizCount,
             IsFavorite = word.IsFavorite,
             LastReviewedAt = word.LastReviewedAt,
+            LastPracticeAt = word.LastPracticeAt,
             NextReviewDate = word.NextReviewDate
         };
     }
@@ -1979,6 +2018,7 @@ public sealed class MainViewModel : ViewModelBase
             ? CurrentStudyWords
             : Words.Where(word => word.LessonId == SelectedStudyDeck.Id).ToList();
 
+        isPracticeQuiz = false;
         ResetQuiz(lessonQuizWords);
     }
 
@@ -1995,6 +2035,7 @@ public sealed class MainViewModel : ViewModelBase
 
     private void StartPractice()
     {
+        isPracticeQuiz = true;
         ResetQuiz(GetPracticeWords());
     }
 
@@ -2006,6 +2047,28 @@ public sealed class MainViewModel : ViewModelBase
     private void SelectPracticeWordSource(string source)
     {
         PracticeWordSource = source is "Favorite" or "All" ? source : "Learned";
+    }
+
+    private void FinishQuizResult()
+    {
+        if (isPracticeQuiz)
+        {
+            ShowPracticeIntro();
+            return;
+        }
+
+        SelectTab("Study");
+    }
+
+    private void ViewPracticeStats()
+    {
+        StopQuizTimer();
+        SelectedTab = "Quiz";
+        IsQuizInProgress = false;
+        IsIncompleteQuizSubmitDialogOpen = false;
+        PracticeTab = "Stats";
+        CurrentView = "Quiz";
+        OnPracticeStatsChanged();
     }
 
     private IEnumerable<VocabularyWord> GetPracticeWords()
@@ -2107,6 +2170,7 @@ public sealed class MainViewModel : ViewModelBase
     {
         StopQuizTimer();
         QuizCompletedTime = QuizElapsedTime;
+        var completedAt = DateTime.Now;
         foreach (var question in QuizQuestions)
         {
             question.IsSubmitted = true;
@@ -2115,12 +2179,30 @@ public sealed class MainViewModel : ViewModelBase
                 if (question.IsCorrect)
                 {
                     question.SourceWord.CorrectQuizCount++;
+                    if (isPracticeQuiz)
+                    {
+                        question.SourceWord.PracticeCorrectQuizCount++;
+                    }
                 }
                 else
                 {
                     question.SourceWord.IncorrectQuizCount++;
+                    if (isPracticeQuiz)
+                    {
+                        question.SourceWord.PracticeIncorrectQuizCount++;
+                    }
+                }
+
+                if (isPracticeQuiz)
+                {
+                    question.SourceWord.LastPracticeAt = completedAt;
                 }
             }
+        }
+
+        if (isPracticeQuiz)
+        {
+            PracticeSessionCount++;
         }
 
         QuizSubmitMessage = "";
@@ -2537,19 +2619,27 @@ public sealed class MainViewModel : ViewModelBase
             return 0;
         }
 
-        var count = Words.Count(word =>
+        return CountPracticeBucket(minInclusive, maxExclusive) / (double)PracticeTotalWords * 100;
+    }
+
+    private int CountPracticeBucket(double minInclusive, double maxExclusive)
+    {
+        return Words.Count(word =>
         {
-            var attempts = word.CorrectQuizCount + word.IncorrectQuizCount;
+            var attempts = GetPracticeAttemptCount(word);
             if (attempts == 0)
             {
                 return false;
             }
 
-            var rate = word.CorrectQuizCount / (double)attempts;
+            var rate = word.PracticeCorrectQuizCount / (double)attempts;
             return rate >= minInclusive && (rate < maxExclusive || (maxExclusive >= 1.0 && rate <= maxExclusive));
         });
+    }
 
-        return count / (double)PracticeTotalWords * 100;
+    private static int GetPracticeAttemptCount(VocabularyWord word)
+    {
+        return word.PracticeCorrectQuizCount + word.PracticeIncorrectQuizCount;
     }
 
     private static bool IsValidEmail(string value)
@@ -3020,9 +3110,27 @@ public sealed class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(PracticeTotalWords));
         OnPropertyChanged(nameof(PracticeReviewedWords));
         OnPropertyChanged(nameof(PracticeTotalAttempts));
+        OnPropertyChanged(nameof(PracticeCorrectAnswers));
+        OnPropertyChanged(nameof(PracticeSessionCount));
         OnPropertyChanged(nameof(PracticeMasteryPercentage));
+        OnPropertyChanged(nameof(PracticeMasteryLabel));
         OnPropertyChanged(nameof(PracticeMasteryText));
         OnPropertyChanged(nameof(PracticeCoverageText));
+        OnPropertyChanged(nameof(PracticeStudiedTodayWords));
+        OnPropertyChanged(nameof(PracticeTotalWordsLine));
+        OnPropertyChanged(nameof(PracticeTotalAttemptsLine));
+        OnPropertyChanged(nameof(PracticeStudiedTodayLine));
+        OnPropertyChanged(nameof(PracticeMasteredWordsLine));
+        OnPropertyChanged(nameof(PracticeLastReviewedLine));
+        OnPropertyChanged(nameof(PracticeLastReviewedText));
+        OnPropertyChanged(nameof(PracticeWeakWords));
+        OnPropertyChanged(nameof(PracticeLearningWords));
+        OnPropertyChanged(nameof(PracticeGoodWords));
+        OnPropertyChanged(nameof(PracticeNewWords));
+        OnPropertyChanged(nameof(PracticeNewCountText));
+        OnPropertyChanged(nameof(PracticeWeakCountText));
+        OnPropertyChanged(nameof(PracticeLearningCountText));
+        OnPropertyChanged(nameof(PracticeGoodCountText));
         OnPropertyChanged(nameof(PracticeWeakBar));
         OnPropertyChanged(nameof(PracticeLearningBar));
         OnPropertyChanged(nameof(PracticeGoodBar));
@@ -3055,6 +3163,7 @@ public sealed class MainViewModel : ViewModelBase
         AutoPlayAudio = state.Settings.AutoPlayAudio;
         OfflineMode = state.Settings.OfflineMode;
         IsDarkMode = state.Settings.IsDarkMode;
+        PracticeSessionCount = state.Settings.PracticeSessionCount;
         SelectedStudyDeck = Decks.FirstOrDefault();
         CurrentWordIndex = 0;
         ClearWordEditor();
@@ -3083,6 +3192,7 @@ public sealed class MainViewModel : ViewModelBase
     {
         Decks.Clear();
         Words.Clear();
+        PracticeSessionCount = 0;
         SelectedStudyDeck = null;
         CurrentWordIndex = 0;
         ClearWordEditor();
@@ -3108,7 +3218,8 @@ public sealed class MainViewModel : ViewModelBase
                 DailyReminders = DailyReminders,
                 AutoPlayAudio = AutoPlayAudio,
                 OfflineMode = OfflineMode,
-                IsDarkMode = IsDarkMode
+                IsDarkMode = IsDarkMode,
+                PracticeSessionCount = PracticeSessionCount
             }
         });
     }

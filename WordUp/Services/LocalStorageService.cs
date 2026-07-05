@@ -240,8 +240,11 @@ public sealed class LocalStorageService
                 review_count INTEGER NOT NULL DEFAULT 0,
                 correct_quiz_count INTEGER NOT NULL DEFAULT 0,
                 incorrect_quiz_count INTEGER NOT NULL DEFAULT 0,
+                practice_correct_quiz_count INTEGER NOT NULL DEFAULT 0,
+                practice_incorrect_quiz_count INTEGER NOT NULL DEFAULT 0,
                 is_favorite INTEGER NOT NULL DEFAULT 0,
                 last_reviewed_at TEXT NULL,
+                last_practice_at TEXT NULL,
                 next_review_date TEXT NOT NULL,
                 FOREIGN KEY (lesson_id) REFERENCES lessons(id) ON DELETE CASCADE
             );
@@ -253,6 +256,7 @@ public sealed class LocalStorageService
                 auto_play_audio INTEGER NOT NULL DEFAULT 0,
                 offline_mode INTEGER NOT NULL DEFAULT 0,
                 is_dark_mode INTEGER NOT NULL DEFAULT 0,
+                practice_session_count INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY (account_email) REFERENCES accounts(email) ON DELETE CASCADE
             );
 
@@ -263,7 +267,9 @@ public sealed class LocalStorageService
         EnsureAccountNoteColumn(connection);
         EnsureAccountAvatarPathColumn(connection);
         EnsureSettingsDarkModeColumn(connection);
+        EnsureSettingsPracticeSessionCountColumn(connection);
         EnsureLessonWordFavoriteColumn(connection);
+        EnsureLessonWordPracticeColumns(connection);
         ClearSharedAccountAvatars(connection);
     }
 
@@ -325,6 +331,18 @@ public sealed class LocalStorageService
         command.ExecuteNonQuery();
     }
 
+    private static void EnsureSettingsPracticeSessionCountColumn(SqliteConnection connection)
+    {
+        if (!TableExists(connection, "settings") || ColumnExists(connection, "settings", "practice_session_count"))
+        {
+            return;
+        }
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "ALTER TABLE settings ADD COLUMN practice_session_count INTEGER NOT NULL DEFAULT 0;";
+        command.ExecuteNonQuery();
+    }
+
     private static void EnsureLessonWordFavoriteColumn(SqliteConnection connection)
     {
         if (!TableExists(connection, "lesson_words") || ColumnExists(connection, "lesson_words", "is_favorite"))
@@ -334,6 +352,30 @@ public sealed class LocalStorageService
 
         using var command = connection.CreateCommand();
         command.CommandText = "ALTER TABLE lesson_words ADD COLUMN is_favorite INTEGER NOT NULL DEFAULT 0;";
+        command.ExecuteNonQuery();
+    }
+
+    private static void EnsureLessonWordPracticeColumns(SqliteConnection connection)
+    {
+        if (!TableExists(connection, "lesson_words"))
+        {
+            return;
+        }
+
+        AddLessonWordColumnIfMissing(connection, "practice_correct_quiz_count", "INTEGER NOT NULL DEFAULT 0");
+        AddLessonWordColumnIfMissing(connection, "practice_incorrect_quiz_count", "INTEGER NOT NULL DEFAULT 0");
+        AddLessonWordColumnIfMissing(connection, "last_practice_at", "TEXT NULL");
+    }
+
+    private static void AddLessonWordColumnIfMissing(SqliteConnection connection, string columnName, string definition)
+    {
+        if (ColumnExists(connection, "lesson_words", columnName))
+        {
+            return;
+        }
+
+        using var command = connection.CreateCommand();
+        command.CommandText = $"ALTER TABLE lesson_words ADD COLUMN {columnName} {definition};";
         command.ExecuteNonQuery();
     }
 
@@ -491,7 +533,8 @@ public sealed class LocalStorageService
         command.CommandText = """
             SELECT lw.lesson_id, lw.word, lw.ipa, lw.type, lw.meaning, lw.vietnamese_meaning, lw.example,
                    lw.mastery_level, lw.review_count, lw.correct_quiz_count, lw.incorrect_quiz_count,
-                   lw.is_favorite, lw.last_reviewed_at, lw.next_review_date
+                   lw.practice_correct_quiz_count, lw.practice_incorrect_quiz_count,
+                   lw.is_favorite, lw.last_reviewed_at, lw.last_practice_at, lw.next_review_date
             FROM lesson_words lw
             INNER JOIN lessons l ON l.id = lw.lesson_id
             WHERE lower(l.account_email) = lower($accountEmail)
@@ -516,9 +559,12 @@ public sealed class LocalStorageService
                 ReviewCount = reader.GetInt32(8),
                 CorrectQuizCount = reader.GetInt32(9),
                 IncorrectQuizCount = reader.GetInt32(10),
-                IsFavorite = reader.GetInt32(11) == 1,
-                LastReviewedAt = reader.IsDBNull(12) ? null : ParseDateTime(reader.GetString(12)),
-                NextReviewDate = ParseDateTime(reader.GetString(13))
+                PracticeCorrectQuizCount = reader.GetInt32(11),
+                PracticeIncorrectQuizCount = reader.GetInt32(12),
+                IsFavorite = reader.GetInt32(13) == 1,
+                LastReviewedAt = reader.IsDBNull(14) ? null : ParseDateTime(reader.GetString(14)),
+                LastPracticeAt = reader.IsDBNull(15) ? null : ParseDateTime(reader.GetString(15)),
+                NextReviewDate = ParseDateTime(reader.GetString(16))
             });
         }
 
@@ -529,7 +575,7 @@ public sealed class LocalStorageService
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT audio_volume, daily_reminders, auto_play_audio, offline_mode, is_dark_mode
+            SELECT audio_volume, daily_reminders, auto_play_audio, offline_mode, is_dark_mode, practice_session_count
             FROM settings
             WHERE lower(account_email) = lower($accountEmail);
             """;
@@ -547,7 +593,8 @@ public sealed class LocalStorageService
             DailyReminders = reader.GetInt32(1) == 1,
             AutoPlayAudio = reader.GetInt32(2) == 1,
             OfflineMode = reader.GetInt32(3) == 1,
-            IsDarkMode = reader.GetInt32(4) == 1
+            IsDarkMode = reader.GetInt32(4) == 1,
+            PracticeSessionCount = reader.GetInt32(5)
         };
     }
 
@@ -661,11 +708,13 @@ public sealed class LocalStorageService
                 INSERT INTO lesson_words (
                     lesson_id, word, ipa, type, meaning, vietnamese_meaning, example,
                     mastery_level, review_count, correct_quiz_count, incorrect_quiz_count,
-                    is_favorite, last_reviewed_at, next_review_date)
+                    practice_correct_quiz_count, practice_incorrect_quiz_count,
+                    is_favorite, last_reviewed_at, last_practice_at, next_review_date)
                 VALUES (
                     $lessonId, $word, $ipa, $type, $meaning, $vietnameseMeaning, $example,
                     $masteryLevel, $reviewCount, $correctQuizCount, $incorrectQuizCount,
-                    $isFavorite, $lastReviewedAt, $nextReviewDate);
+                    $practiceCorrectQuizCount, $practiceIncorrectQuizCount,
+                    $isFavorite, $lastReviewedAt, $lastPracticeAt, $nextReviewDate);
                 """;
             command.Parameters.AddWithValue("$lessonId", word.LessonId);
             command.Parameters.AddWithValue("$word", word.Word);
@@ -678,8 +727,11 @@ public sealed class LocalStorageService
             command.Parameters.AddWithValue("$reviewCount", word.ReviewCount);
             command.Parameters.AddWithValue("$correctQuizCount", word.CorrectQuizCount);
             command.Parameters.AddWithValue("$incorrectQuizCount", word.IncorrectQuizCount);
+            command.Parameters.AddWithValue("$practiceCorrectQuizCount", word.PracticeCorrectQuizCount);
+            command.Parameters.AddWithValue("$practiceIncorrectQuizCount", word.PracticeIncorrectQuizCount);
             command.Parameters.AddWithValue("$isFavorite", word.IsFavorite ? 1 : 0);
             command.Parameters.AddWithValue("$lastReviewedAt", word.LastReviewedAt is null ? DBNull.Value : FormatDateTime(word.LastReviewedAt.Value));
+            command.Parameters.AddWithValue("$lastPracticeAt", word.LastPracticeAt is null ? DBNull.Value : FormatDateTime(word.LastPracticeAt.Value));
             command.Parameters.AddWithValue("$nextReviewDate", FormatDateTime(word.NextReviewDate));
             command.ExecuteNonQuery();
         }
@@ -711,14 +763,15 @@ public sealed class LocalStorageService
         using var command = connection.CreateCommand();
         command.Transaction = transaction;
         command.CommandText = """
-            INSERT INTO settings (account_email, audio_volume, daily_reminders, auto_play_audio, offline_mode, is_dark_mode)
-            VALUES ($accountEmail, $audioVolume, $dailyReminders, $autoPlayAudio, $offlineMode, $isDarkMode)
+            INSERT INTO settings (account_email, audio_volume, daily_reminders, auto_play_audio, offline_mode, is_dark_mode, practice_session_count)
+            VALUES ($accountEmail, $audioVolume, $dailyReminders, $autoPlayAudio, $offlineMode, $isDarkMode, $practiceSessionCount)
             ON CONFLICT(account_email) DO UPDATE SET
                 audio_volume = excluded.audio_volume,
                 daily_reminders = excluded.daily_reminders,
                 auto_play_audio = excluded.auto_play_audio,
                 offline_mode = excluded.offline_mode,
-                is_dark_mode = excluded.is_dark_mode;
+                is_dark_mode = excluded.is_dark_mode,
+                practice_session_count = excluded.practice_session_count;
             """;
         command.Parameters.AddWithValue("$accountEmail", accountEmail.Trim());
         command.Parameters.AddWithValue("$audioVolume", settings.AudioVolume);
@@ -726,6 +779,7 @@ public sealed class LocalStorageService
         command.Parameters.AddWithValue("$autoPlayAudio", settings.AutoPlayAudio ? 1 : 0);
         command.Parameters.AddWithValue("$offlineMode", settings.OfflineMode ? 1 : 0);
         command.Parameters.AddWithValue("$isDarkMode", settings.IsDarkMode ? 1 : 0);
+        command.Parameters.AddWithValue("$practiceSessionCount", settings.PracticeSessionCount);
         command.ExecuteNonQuery();
     }
 

@@ -11,7 +11,7 @@ public sealed class SrsService
         var normalizedRating = Math.Clamp(rating, 0, 2);
 
         word.ReviewCount++;
-        word.LastReviewedAt = DateTime.Today;
+        word.LastReviewedAt = DateTime.Now;
 
         word.MasteryLevel = normalizedRating switch
         {

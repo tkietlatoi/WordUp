@@ -16,8 +16,11 @@ public sealed class VocabularyWord : INotifyPropertyChanged
     private int reviewCount;
     private int correctQuizCount;
     private int incorrectQuizCount;
+    private int practiceCorrectQuizCount;
+    private int practiceIncorrectQuizCount;
     private bool isFavorite;
     private DateTime? lastReviewedAt;
+    private DateTime? lastPracticeAt;
     private DateTime nextReviewDate = DateTime.Today;
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -88,6 +91,18 @@ public sealed class VocabularyWord : INotifyPropertyChanged
         set => SetProperty(ref incorrectQuizCount, Math.Max(0, value));
     }
 
+    public int PracticeCorrectQuizCount
+    {
+        get => practiceCorrectQuizCount;
+        set => SetProperty(ref practiceCorrectQuizCount, Math.Max(0, value));
+    }
+
+    public int PracticeIncorrectQuizCount
+    {
+        get => practiceIncorrectQuizCount;
+        set => SetProperty(ref practiceIncorrectQuizCount, Math.Max(0, value));
+    }
+
     public bool IsFavorite
     {
         get => isFavorite;
@@ -98,6 +113,12 @@ public sealed class VocabularyWord : INotifyPropertyChanged
     {
         get => lastReviewedAt;
         set => SetProperty(ref lastReviewedAt, value);
+    }
+
+    public DateTime? LastPracticeAt
+    {
+        get => lastPracticeAt;
+        set => SetProperty(ref lastPracticeAt, value);
     }
 
     public DateTime NextReviewDate

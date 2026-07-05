@@ -3,9 +3,10 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <StackPanel Margin="22,18,22,22">
         <Grid>
-            <Button Content="x" Style="{StaticResource IconButton}" HorizontalAlignment="Left" Command="{Binding SelectTabCommand}" CommandParameter="Study" />
+            <Button Content="x" Style="{StaticResource IconButton}" HorizontalAlignment="Left" Command="{Binding FinishQuizResultCommand}" />
             <TextBlock Text="Kết quả bài kiểm tra" Style="{StaticResource PageTitleText}" FontSize="21" HorizontalAlignment="Center" />
         </Grid>
+
         <Border Style="{StaticResource Card}" Height="210" Margin="0,18,0,18">
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                 <TextBlock Text="{Binding QuizScorePercentage, StringFormat={}{0}%}" Foreground="{StaticResource IndigoBrush}" FontSize="38" FontWeight="Bold" TextAlignment="Center" />
@@ -14,26 +15,33 @@
                 <TextBlock Text="Bạn đã hoàn thành bài kiểm tra." Style="{StaticResource MutedText}" TextAlignment="Center" />
             </StackPanel>
         </Border>
-        <TextBlock Text="Chi tiết câu hỏi" Style="{StaticResource SectionTitleText}" />
-        <ItemsControl ItemsSource="{Binding QuizQuestions}">
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <Border Style="{StaticResource Card}" Padding="14">
-                        <Grid>
-                            <TextBlock Text="{Binding StatusSymbol}" Width="30" Height="30" TextAlignment="Center" VerticalAlignment="Top" FontWeight="Bold" Foreground="{Binding StatusBrush}" />
-                            <StackPanel Margin="40,0,0,0">
-                                <TextBlock Text="{Binding Term, StringFormat=Câu hỏi: {0}}" FontWeight="SemiBold" />
-                                <TextBlock Text="{Binding SelectedChoice, StringFormat=Đã chọn: {0}}" Foreground="{Binding SelectedChoiceBrush}" FontSize="12" Margin="0,8,0,0" />
-                                <TextBlock Text="{Binding CorrectChoice, StringFormat=Đáp án đúng: {0}}" Foreground="{StaticResource SuccessBrush}" FontSize="12" Margin="0,4,0,0" Visibility="{Binding ShowCorrectChoice, Converter={StaticResource BoolToVisibility}}" />
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <UniformGrid Columns="2">
-            <Button Content="Làm lại" Style="{StaticResource OutlineButton}" Margin="0,0,8,0" Command="{Binding ResetQuizCommand}" />
-            <Button Content="Hoàn thành" Style="{StaticResource PrimaryButton}" Margin="8,0,0,0" Command="{Binding SelectTabCommand}" CommandParameter="Dashboard" />
+
+        <TextBlock Text="Chi tiết câu hỏi" Style="{StaticResource SectionTitleText}" Margin="0,0,0,8" />
+        <Border Style="{StaticResource Card}" Padding="10" Margin="0,0,0,18">
+            <ScrollViewer Height="260" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding QuizQuestions}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,10">
+                                <Grid>
+                                    <TextBlock Text="{Binding StatusSymbol}" Width="30" Height="30" TextAlignment="Center" VerticalAlignment="Top" FontWeight="Bold" Foreground="{Binding StatusBrush}" />
+                                    <StackPanel Margin="40,0,0,0">
+                                        <TextBlock Text="{Binding Term, StringFormat=Câu hỏi: {0}}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding SelectedChoice, StringFormat=Đã chọn: {0}}" Foreground="{Binding SelectedChoiceBrush}" FontSize="12" Margin="0,8,0,0" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding CorrectChoice, StringFormat=Đáp án đúng: {0}}" Foreground="{StaticResource SuccessBrush}" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap" Visibility="{Binding ShowCorrectChoice, Converter={StaticResource BoolToVisibility}}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Border>
+
+        <UniformGrid Columns="3">
+            <Button Content="Làm lại" Style="{StaticResource OutlineButton}" Margin="0,0,6,0" Command="{Binding ResetQuizCommand}" />
+            <Button Content="Xem thống kê" Style="{StaticResource OutlineButton}" Margin="6,0" Command="{Binding ViewPracticeStatsCommand}" />
+            <Button Content="Hoàn thành" Style="{StaticResource PrimaryButton}" Margin="6,0,0,0" Command="{Binding FinishQuizResultCommand}" />
         </UniformGrid>
     </StackPanel>
 </UserControl>

@@ -91,7 +91,7 @@
                 </Grid>
             </Border>
 
-            <Border Style="{StaticResource Card}" Padding="16" Visibility="{Binding IsPracticeStatsTab, Converter={StaticResource BoolToVisibility}}">
+            <Border Style="{StaticResource Card}" Padding="18" Visibility="{Binding IsPracticeStatsTab, Converter={StaticResource BoolToVisibility}}">
                 <StackPanel>
                     <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
@@ -99,15 +99,18 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
-                            <TextBlock Text="Tỷ lệ thuộc từ" FontWeight="Bold" />
-                            <TextBlock Text="{Binding PracticeMasteryText}" Style="{StaticResource MutedText}" Margin="0,4,0,0" TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding PracticeCoverageText}" Style="{StaticResource MutedText}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                            <TextBlock Text="Tỷ lệ thuộc từ" FontSize="17" FontWeight="Bold" />
+                            <TextBlock Text="{Binding PracticeMasteryText}" Style="{StaticResource MutedText}" FontSize="14" Margin="0,5,0,0" TextWrapping="Wrap" />
+                            <TextBlock Text="{Binding PracticeCoverageText}" Style="{StaticResource MutedText}" FontSize="14" Margin="0,3,0,0" TextWrapping="Wrap" />
                         </StackPanel>
-                        <TextBlock Grid.Column="1" Text="{Binding PracticeMasteryPercentage, StringFormat={}{0}%}" Foreground="{DynamicResource IndigoDarkBrush}" FontSize="30" FontWeight="Bold" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding PracticeMasteryPercentage, StringFormat={}{0}%}" Foreground="{DynamicResource IndigoDarkBrush}" FontSize="38" FontWeight="Bold" TextAlignment="Right" />
+                            <TextBlock Text="{Binding PracticeMasteryLabel}" Style="{StaticResource MutedText}" FontSize="14" TextAlignment="Right" Margin="0,2,0,0" />
+                        </StackPanel>
                     </Grid>
                     <ProgressBar Value="{Binding PracticeMasteryPercentage, Mode=OneWay}" Maximum="100" Height="8" Foreground="{DynamicResource IndigoBrush}" Margin="0,0,0,18" />
 
-                    <TextBlock Text="Biểu đồ phân bố ghi nhớ" FontWeight="SemiBold" Margin="0,0,0,10" />
+                    <TextBlock Text="Biểu đồ phân bố ghi nhớ" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" />
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition />
@@ -117,26 +120,47 @@
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0" Margin="0,0,5,0">
-                            <TextBlock Text="{Binding PracticeNewBar, StringFormat={}{0:0}%}" FontWeight="SemiBold" TextAlignment="Center" Margin="0,0,0,4" />
-                            <ProgressBar Value="{Binding PracticeNewBar, Mode=OneWay}" Maximum="100" Width="22" Height="82" HorizontalAlignment="Center" Orientation="Vertical" Foreground="{DynamicResource BorderBrush}" />
-                            <TextBlock Text="Mới" Style="{StaticResource MutedText}" TextAlignment="Center" Margin="0,6,0,0" />
+                            <TextBlock Text="{Binding PracticeNewBar, StringFormat={}{0:0}%}" FontSize="14" FontWeight="SemiBold" TextAlignment="Center" Margin="0,0,0,4" />
+                            <ProgressBar Value="{Binding PracticeNewBar, Mode=OneWay}" Maximum="100" Width="26" Height="104" HorizontalAlignment="Center" Orientation="Vertical" Foreground="{DynamicResource BorderBrush}" />
+                            <TextBlock Text="Mới" Style="{StaticResource MutedText}" FontSize="14" TextAlignment="Center" Margin="0,7,0,0" />
+                            <TextBlock Text="{Binding PracticeNewCountText}" Style="{StaticResource MutedText}" FontSize="12" TextAlignment="Center" TextWrapping="Wrap" Margin="0,3,0,0" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Margin="5,0">
-                            <TextBlock Text="{Binding PracticeWeakBar, StringFormat={}{0:0}%}" FontWeight="SemiBold" TextAlignment="Center" Margin="0,0,0,4" />
-                            <ProgressBar Value="{Binding PracticeWeakBar, Mode=OneWay}" Maximum="100" Width="22" Height="82" HorizontalAlignment="Center" Orientation="Vertical" Foreground="{DynamicResource DangerBrush}" />
-                            <TextBlock Text="Yếu" Style="{StaticResource MutedText}" TextAlignment="Center" Margin="0,6,0,0" />
+                            <TextBlock Text="{Binding PracticeWeakBar, StringFormat={}{0:0}%}" FontSize="14" FontWeight="SemiBold" TextAlignment="Center" Margin="0,0,0,4" />
+                            <ProgressBar Value="{Binding PracticeWeakBar, Mode=OneWay}" Maximum="100" Width="26" Height="104" HorizontalAlignment="Center" Orientation="Vertical" Foreground="{DynamicResource DangerBrush}" />
+                            <TextBlock Text="Yếu" Style="{StaticResource MutedText}" FontSize="14" TextAlignment="Center" Margin="0,7,0,0" />
+                            <TextBlock Text="{Binding PracticeWeakCountText}" Style="{StaticResource MutedText}" FontSize="12" TextAlignment="Center" TextWrapping="Wrap" Margin="0,3,0,0" />
                         </StackPanel>
                         <StackPanel Grid.Column="2" Margin="5,0">
-                            <TextBlock Text="{Binding PracticeLearningBar, StringFormat={}{0:0}%}" FontWeight="SemiBold" TextAlignment="Center" Margin="0,0,0,4" />
-                            <ProgressBar Value="{Binding PracticeLearningBar, Mode=OneWay}" Maximum="100" Width="22" Height="82" HorizontalAlignment="Center" Orientation="Vertical" Foreground="#E0A12F" />
-                            <TextBlock Text="Đang nhớ" Style="{StaticResource MutedText}" TextAlignment="Center" Margin="0,6,0,0" />
+                            <TextBlock Text="{Binding PracticeLearningBar, StringFormat={}{0:0}%}" FontSize="14" FontWeight="SemiBold" TextAlignment="Center" Margin="0,0,0,4" />
+                            <ProgressBar Value="{Binding PracticeLearningBar, Mode=OneWay}" Maximum="100" Width="26" Height="104" HorizontalAlignment="Center" Orientation="Vertical" Foreground="#E0A12F" />
+                            <TextBlock Text="Đang nhớ" Style="{StaticResource MutedText}" FontSize="14" TextAlignment="Center" Margin="0,7,0,0" />
+                            <TextBlock Text="{Binding PracticeLearningCountText}" Style="{StaticResource MutedText}" FontSize="12" TextAlignment="Center" TextWrapping="Wrap" Margin="0,3,0,0" />
                         </StackPanel>
                         <StackPanel Grid.Column="3" Margin="5,0,0,0">
-                            <TextBlock Text="{Binding PracticeGoodBar, StringFormat={}{0:0}%}" FontWeight="SemiBold" TextAlignment="Center" Margin="0,0,0,4" />
-                            <ProgressBar Value="{Binding PracticeGoodBar, Mode=OneWay}" Maximum="100" Width="22" Height="82" HorizontalAlignment="Center" Orientation="Vertical" Foreground="{DynamicResource SuccessBrush}" />
-                            <TextBlock Text="Tốt" Style="{StaticResource MutedText}" TextAlignment="Center" Margin="0,6,0,0" />
+                            <TextBlock Text="{Binding PracticeGoodBar, StringFormat={}{0:0}%}" FontSize="14" FontWeight="SemiBold" TextAlignment="Center" Margin="0,0,0,4" />
+                            <ProgressBar Value="{Binding PracticeGoodBar, Mode=OneWay}" Maximum="100" Width="26" Height="104" HorizontalAlignment="Center" Orientation="Vertical" Foreground="{DynamicResource SuccessBrush}" />
+                            <TextBlock Text="Tốt" Style="{StaticResource MutedText}" FontSize="14" TextAlignment="Center" Margin="0,7,0,0" />
+                            <TextBlock Text="{Binding PracticeGoodCountText}" Style="{StaticResource MutedText}" FontSize="12" TextAlignment="Center" TextWrapping="Wrap" Margin="0,3,0,0" />
                         </StackPanel>
                     </Grid>
+                    <StackPanel Margin="0,16,0,0">
+                        <Border Background="{DynamicResource HoverSurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,0,0,8">
+                            <TextBlock Text="{Binding PracticeTotalWordsLine}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        </Border>
+                        <Border Background="{DynamicResource HoverSurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,0,0,8">
+                            <TextBlock Text="{Binding PracticeTotalAttemptsLine}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        </Border>
+                        <Border Background="{DynamicResource HoverSurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,0,0,8">
+                            <TextBlock Text="{Binding PracticeStudiedTodayLine}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        </Border>
+                        <Border Background="{DynamicResource HoverSurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12,9" Margin="0,0,0,8">
+                            <TextBlock Text="{Binding PracticeMasteredWordsLine}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        </Border>
+                        <Border Background="{DynamicResource HoverSurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="12,9">
+                            <TextBlock Text="{Binding PracticeLastReviewedLine}" FontSize="15" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        </Border>
+                    </StackPanel>
                 </StackPanel>
             </Border>
         </StackPanel>
