@@ -23,6 +23,35 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <Style x:Key="ThemeSwitch" TargetType="ToggleButton">
+            <Setter Property="Width" Value="58" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Track" Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" CornerRadius="15" Background="{DynamicResource BorderBrush}">
+                            <Ellipse x:Name="Thumb" Width="24" Height="24" Fill="{DynamicResource SurfaceBrush}" HorizontalAlignment="Left" Margin="3,0,0,0" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Track" Property="Background" Value="{DynamicResource IndigoBrush}" />
+                                <Setter TargetName="Thumb" Property="HorizontalAlignment" Value="Right" />
+                                <Setter TargetName="Thumb" Property="Margin" Value="0,0,3,0" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Track" Property="Opacity" Value="0.92" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Track" Property="Opacity" Value="0.78" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </UserControl.Resources>
     <Grid>
     <StackPanel Margin="22,18,22,22">
@@ -48,7 +77,16 @@
         <Button Content="✎  Sửa hồ sơ  >" Style="{StaticResource OutlineButton}" HorizontalContentAlignment="Left" Margin="0,0,0,10" Command="{Binding NavigateCommand}" CommandParameter="Profile" />
         <Button Content="ⓘ  Giới thiệu WordUp  >" Style="{StaticResource OutlineButton}" HorizontalContentAlignment="Left" Margin="0,0,0,10" Command="{Binding NavigateCommand}" CommandParameter="About" />
         <Button Content="⚙  Cài đặt chung  >" Style="{StaticResource OutlineButton}" HorizontalContentAlignment="Left" Margin="0,0,0,10" Command="{Binding NavigateCommand}" CommandParameter="Settings" />
-        <CheckBox Content="Giao diện tối" IsChecked="{Binding IsDarkMode, Mode=TwoWay}" Margin="0,14,0,18" />
+        <Border Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12" Padding="14,10" Margin="0,14,0,18">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Giao diện tối" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <ToggleButton Grid.Column="1" Style="{StaticResource ThemeSwitch}" IsChecked="{Binding IsDarkMode, Mode=TwoWay}" />
+            </Grid>
+        </Border>
         <Border Style="{StaticResource Card}" Padding="16" Margin="0,0,0,18">
             <StackPanel>
                 <TextBlock Text="Hồ sơ học tập" FontWeight="SemiBold" TextAlignment="Center" Margin="0,0,0,8" />
