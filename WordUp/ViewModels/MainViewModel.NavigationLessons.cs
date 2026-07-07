@@ -83,6 +83,13 @@ public sealed partial class MainViewModel
         IsLessonCompleteDialogOpen = false;
         IsAddLessonOpen = false;
         IsStudyFlashcardOpen = true;
+
+        if (SelectedStudyDeck.ProgressPercentage >= 100 && CurrentStudyWords.Count > 0)
+        {
+            ShowLessonCompleteDialog();
+            return;
+        }
+
         AutoPlayCurrentWord();
     }
 
@@ -308,6 +315,7 @@ public sealed partial class MainViewModel
             editingLessonWord.AudioPath = NewLessonAudioPath.Trim();
             NewLessonMessage = $"Đã cập nhật từ {editingLessonWord.Word}.";
             OnPropertyChanged(nameof(FilteredNewLessonWords));
+            SaveEditedLessonWordsIfPossible();
             ClearLessonWordEditor();
             return;
         }
@@ -324,6 +332,7 @@ public sealed partial class MainViewModel
 
         ClearLessonWordEditor();
         OnPropertyChanged(nameof(FilteredNewLessonWords));
+        SaveEditedLessonWordsIfPossible();
         NewLessonMessage = $"Đã thêm {NewLessonWords.Count} từ vào bài học.";
     }
 
@@ -470,6 +479,11 @@ public sealed partial class MainViewModel
         if (dialog.ShowDialog() == true)
         {
             NewLessonAudioPath = dialog.FileName;
+            if (editingLessonWord is not null)
+            {
+                editingLessonWord.AudioPath = NewLessonAudioPath.Trim();
+                OnPropertyChanged(nameof(FilteredNewLessonWords));
+            }
             NewLessonMessage = $"Đã chọn âm thanh: {Path.GetFileName(dialog.FileName)}.";
         }
     }
@@ -490,6 +504,8 @@ public sealed partial class MainViewModel
                 return;
             }
 
+            ApplyPendingLessonWordEdit();
+
             var lesson = editingLesson ?? new Deck();
             var isEditingLesson = editingLesson is not null;
             var existingWords = isEditingLesson
@@ -505,6 +521,13 @@ public sealed partial class MainViewModel
                 lesson.CreatedAt = lesson.UpdatedAt;
                 Decks.Add(lesson);
                 AttachPracticeLessonTracking(lesson);
+
+                foreach (var word in NewLessonWords)
+                {
+                    var savedWord = CloneVocabularyWord(word);
+                    savedWord.LessonId = lesson.Id;
+                    Words.Add(savedWord);
+                }
             }
             else if (!HaveSameLessonWords(existingWords, NewLessonWords))
             {
@@ -549,6 +572,61 @@ public sealed partial class MainViewModel
         NewLessonType = "";
         NewLessonAudioPath = "";
         OnLessonEditorChanged();
+    }
+
+    private void ApplyPendingLessonWordEdit()
+    {
+        if (editingLessonWord is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(NewLessonWord) || string.IsNullOrWhiteSpace(NewLessonMeaning))
+        {
+            return;
+        }
+
+        editingLessonWord.Word = NewLessonWord.Trim();
+        editingLessonWord.Ipa = NewLessonIpa.Trim();
+        editingLessonWord.Meaning = NewLessonMeaning.Trim();
+        editingLessonWord.VietnameseMeaning = NewLessonMeaning.Trim();
+        editingLessonWord.Type = string.IsNullOrWhiteSpace(NewLessonType) ? "word" : NewLessonType.Trim();
+        editingLessonWord.AudioPath = NewLessonAudioPath.Trim();
+        OnPropertyChanged(nameof(FilteredNewLessonWords));
+    }
+
+    private void SaveEditedLessonWordsIfPossible()
+    {
+        if (editingLesson is null)
+        {
+            return;
+        }
+
+        var existingWords = Words.Where(word => word.LessonId == editingLesson.Id).ToList();
+        foreach (var word in existingWords)
+        {
+            Words.Remove(word);
+        }
+
+        foreach (var word in NewLessonWords)
+        {
+            var savedWord = CloneVocabularyWord(word);
+            savedWord.LessonId = editingLesson.Id;
+            Words.Add(savedWord);
+        }
+
+        editingLesson.TotalWords = NewLessonWords.Count;
+        editingLesson.UpdatedAt = DateTime.Now;
+        SelectedStudyDeck = editingLesson;
+        SyncLessonProgress();
+        OnPropertyChanged(nameof(FilteredWords));
+        OnPropertyChanged(nameof(CurrentStudyWords));
+        OnPropertyChanged(nameof(CurrentWord));
+        OnPropertyChanged(nameof(StudyProgressText));
+        OnPropertyChanged(nameof(StudyProgressValue));
+        OnProgressChanged();
+        RefreshQuizQuestions();
+        SaveAppState();
     }
 
     private void EnsureLessonIds()
