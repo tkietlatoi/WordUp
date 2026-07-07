@@ -756,13 +756,35 @@ public sealed partial class MainViewModel
 
     private void Logout()
     {
+        StopStudyAuto();
+        StopQuizTimer();
         IsLogoutDialogOpen = false;
+        IsDeleteAccountDialogOpen = false;
+        IsAvatarDialogOpen = false;
+        IsIncompleteQuizSubmitDialogOpen = false;
+        IsQuizSettingsOpen = false;
+        IsLessonCompleteDialogOpen = false;
+        IsStudyFlashcardOpen = false;
+        IsAddLessonOpen = false;
+        IsFlashcardBackVisible = false;
+        IsDeleteWordDialogOpen = false;
+        pendingDeleteWord = null;
+        IsDeleteLessonWordDialogOpen = false;
+        pendingDeleteLesson = null;
+        pendingDeleteLessonWord = null;
+        OnPropertyChanged(nameof(IsDeleteLessonDialogOpen));
+        OnPropertyChanged(nameof(DeleteLessonDialogTitle));
+        OnPropertyChanged(nameof(DeleteLessonDialogMessage));
+        OnPropertyChanged(nameof(DeleteWordDialogText));
+        OnPropertyChanged(nameof(DeleteLessonWordDialogText));
         IsAuthenticated = false;
         pendingAuthenticatedView = "Dashboard";
         LoginPassword = "";
         AuthMessage = "";
+        IsAuthMessageSuccess = false;
         ClearCurrentUser();
-        SelectTab("Dashboard");
+        SelectedTab = "Dashboard";
+        CurrentView = "Dashboard";
     }
 
     private void DeleteAccount()
