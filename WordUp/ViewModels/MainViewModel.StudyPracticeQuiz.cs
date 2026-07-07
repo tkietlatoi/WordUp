@@ -641,6 +641,19 @@ public sealed partial class MainViewModel
         }
     }
 
+    private void RemoveAvatar()
+    {
+        if (string.IsNullOrWhiteSpace(User.AvatarPath))
+        {
+            IsAvatarDialogOpen = false;
+            return;
+        }
+
+        User.AvatarPath = "";
+        IsAvatarDialogOpen = false;
+        SaveAppState();
+    }
+
     private string SaveAvatarForCurrentAccount(string sourcePath)
     {
         if (string.IsNullOrWhiteSpace(User.Email))

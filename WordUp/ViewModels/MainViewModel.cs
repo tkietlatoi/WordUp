@@ -215,6 +215,7 @@ public sealed partial class MainViewModel : ViewModelBase
         OpenAvatarDialogCommand = new RelayCommand(_ => IsAvatarDialogOpen = true);
         CloseAvatarDialogCommand = new RelayCommand(_ => IsAvatarDialogOpen = false);
         ImportAvatarCommand = new RelayCommand(_ => ImportAvatar());
+        RemoveAvatarCommand = new RelayCommand(_ => RemoveAvatar());
 
         studyAutoTimer = new DispatcherTimer
         {
@@ -313,4 +314,5 @@ public sealed partial class MainViewModel : ViewModelBase
     public ICommand OpenAvatarDialogCommand { get; }
     public ICommand CloseAvatarDialogCommand { get; }
     public ICommand ImportAvatarCommand { get; }
+    public ICommand RemoveAvatarCommand { get; }
 }

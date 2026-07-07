@@ -129,6 +129,7 @@ public sealed partial class LocalStorageService
         EnsureCleanAccountsSchema(connection);
         EnsureAccountNoteColumn(connection);
         EnsureAccountAvatarPathColumn(connection);
+        NormalizeAccountAvatarPaths(connection);
         EnsureSettingsDarkModeColumn(connection);
         EnsureSettingsPracticeSessionCountColumn(connection);
         EnsureLessonWordAudioPathColumn(connection);
@@ -272,6 +273,18 @@ public sealed partial class LocalStorageService
 
         using var command = connection.CreateCommand();
         command.CommandText = "ALTER TABLE accounts ADD COLUMN avatar_path TEXT NOT NULL DEFAULT '';";
+        command.ExecuteNonQuery();
+    }
+
+    private static void NormalizeAccountAvatarPaths(SqliteConnection connection)
+    {
+        if (!TableExists(connection, "accounts") || !ColumnExists(connection, "accounts", "avatar_path"))
+        {
+            return;
+        }
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE accounts SET avatar_path = '' WHERE avatar_path IS NULL;";
         command.ExecuteNonQuery();
     }
 

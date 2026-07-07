@@ -11,7 +11,7 @@ public sealed partial class LocalStorageService
     {
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT full_name, email, phone, note, avatar_path
+            SELECT full_name, email, phone, note, COALESCE(avatar_path, '')
             FROM accounts
             WHERE lower(email) = lower($email)
             LIMIT 1;

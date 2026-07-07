@@ -150,7 +150,7 @@ public sealed partial class LocalStorageService
         using var connection = OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            SELECT full_name, email, phone, note, avatar_path, password_hash
+            SELECT full_name, email, phone, note, COALESCE(avatar_path, ''), password_hash
             FROM accounts
             WHERE lower(email) = lower($contact)
                OR phone = $contact

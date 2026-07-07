@@ -130,6 +130,7 @@
                     <TextBlock Text="{Binding User.Initials}" Foreground="{StaticResource IndigoBrush}" FontWeight="Bold" FontSize="42" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding User.HasAvatar, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}" />
                 </Grid>
                 <Button Content="Nhập" Style="{StaticResource PrimaryButton}" Margin="0,0,0,10" Command="{Binding ImportAvatarCommand}" />
+                <Button Content="Xóa avatar" Style="{StaticResource DangerButton}" Margin="0,0,0,10" Command="{Binding RemoveAvatarCommand}" IsEnabled="{Binding User.HasAvatar}" />
                 <Button Content="Đóng" Style="{StaticResource OutlineButton}" Command="{Binding CloseAvatarDialogCommand}" />
             </StackPanel>
         </Border>
